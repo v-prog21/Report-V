@@ -1,0 +1,4 @@
+# Hashes of file build rules.
+7b402fce871249f1ab1ea1ba862117df BugTracker_autogen/3YJK5W5UP7/qrc_resources.cpp
+b24b6f47848a4d47de521b80eb805040 BugTracker_autogen/timestamp
+7f21a107ad59510bbcf527212ad31aa1 CMakeFiles/BugTracker_autogen

@@ -1,0 +1,80 @@
+QWidget {
+    font-family: "Segoe UI", "SF Pro Display", sans-serif;
+    font-size: 10pt;
+    color: #1e293b;
+    background-color: #f1f5f9;
+}
+QMainWindow, QTabWidget::pane { background-color: #ffffff; border: none; }
+
+/* Стилизация вкладок */
+QTabWidget::tab-bar { alignment: center; }
+QTabBar::tab {
+    background: #e2e8f0;
+    color: #64748b;
+    padding: 10px 25px;
+    margin: 5px 5px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 10pt;
+}
+QTabBar::tab:selected { background: #3b82f6; color: white; }
+QTabBar::tab:hover:!selected { background: #cbd5e1; }
+
+/* Кнопки */
+QPushButton {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+QPushButton:hover { background-color: #2563eb; }
+QPushButton:disabled { background-color: #cbd5e1; }
+QPushButton#btnSecondary { background-color: #ffffff; color: #475569; border: 1px solid #e2e8f0; }
+QPushButton#btnSecondary:hover { background-color: #f8fafc; }
+
+/* Поля ввода */
+QLineEdit, QTextEdit {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+QLineEdit:focus, QTextEdit:focus { border: 1px solid #3b82f6; }
+
+/* Таблицы */
+QTableView {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    outline: none;
+}
+QTableView::item:selected { background-color: #eff6ff; color: #1d4ed8; }
+QHeaderView::section {
+    background-color: #f8fafc;
+    color: #64748b;
+    padding: 8px;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    font-weight: bold;
+}
+
+/* Скроллбары */
+QScrollBar:vertical { border: none; background: transparent; width: 10px; }
+QScrollBar::handle:vertical { background: #cbd5e1; min-height: 20px; border-radius: 5px; }
+QScrollBar::handle:vertical:hover { background: #94a3b8; }
+
+/* Группы */
+QGroupBox {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-top: 15px;
+    background-color: #ffffff;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px;
+    color: #3b82f6;
+}
