@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\BugTracker.dir/objects.a
-C:\Users\Win10_Game_OS\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\BugTracker.dir/objects.a @CMakeFiles\BugTracker.dir\objects1.rsp
-C:\Users\Win10_Game_OS\Tools\mingw1310_64\bin\g++.exe -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles\BugTracker.dir/objects.a -Wl,--no-whole-archive -o BugTracker.exe -Wl,--out-implib,libBugTracker.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\BugTracker.dir\linkLibs.rsp

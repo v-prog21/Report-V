@@ -1,5 +1,0 @@
-C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/CMakeFiles/BugTracker.dir
-C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/CMakeFiles/edit_cache.dir
-C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/CMakeFiles/rebuild_cache.dir
-C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/CMakeFiles/BugTracker_autogen_timestamp_deps.dir
-C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/CMakeFiles/BugTracker_autogen.dir
