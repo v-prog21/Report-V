@@ -1,5 +1,14 @@
 <RCC>
     <qresource prefix="/">
         <file>style.qss</file>
+        <file>ico.ico</file>
+        <file>icons/devices.svg</file>
+        <file>icons/bugs.svg</file>
+        <file>icons/admin.svg</file>
+        <file>icons/archive.svg</file>
+        <file>icons/links.svg</file>
+        <file>icons/settings.svg</file>
+        <file>icons/check.svg</file>
+        <file>icons/chevron.svg</file>
     </qresource>
 </RCC>

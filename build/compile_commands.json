@@ -1,0 +1,122 @@
+[
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\SupportIL_autogen\\mocs_compilation.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\build\\SupportIL_autogen\\mocs_compilation.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/SupportIL_autogen/mocs_compilation.cpp",
+  "output": "CMakeFiles/SupportIL.dir/SupportIL_autogen/mocs_compilation.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\main.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\main.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/main.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/main.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\mainwindow.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\mainwindow.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/mainwindow.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/mainwindow.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\reportmanager.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\reportmanager.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/reportmanager.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/reportmanager.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\reportmodel.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\reportmodel.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/reportmodel.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/reportmodel.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\settingsmanager.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\settingsmanager.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/settingsmanager.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/settingsmanager.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\deviceutils.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\deviceutils.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/deviceutils.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/deviceutils.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\devicerepository.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\devicerepository.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/devicerepository.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/devicerepository.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\devicemodel.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\devicemodel.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/devicemodel.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/devicemodel.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\devicedetaildialog.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\devicedetaildialog.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/devicedetaildialog.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/devicedetaildialog.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\fgisclient.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\fgisclient.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/fgisclient.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/fgisclient.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\deviceswidget.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\deviceswidget.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/deviceswidget.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/deviceswidget.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\networkmanager.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\networkmanager.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/networkmanager.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/networkmanager.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\src\\fgissearchdialog.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\fgissearchdialog.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/fgissearchdialog.cpp",
+  "output": "CMakeFiles/SupportIL.dir/src/fgissearchdialog.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\SupportIL.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\SupportIL.dir\\SupportIL_autogen\\3YJK5W5UP7\\qrc_resources.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\build\\SupportIL_autogen\\3YJK5W5UP7\\qrc_resources.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/SupportIL_autogen/3YJK5W5UP7/qrc_resources.cpp",
+  "output": "CMakeFiles/SupportIL.dir/SupportIL_autogen/3YJK5W5UP7/qrc_resources.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\supportil_selftest.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\supportil_selftest.dir\\supportil_selftest_autogen\\mocs_compilation.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\build\\supportil_selftest_autogen\\mocs_compilation.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/supportil_selftest_autogen/mocs_compilation.cpp",
+  "output": "CMakeFiles/supportil_selftest.dir/supportil_selftest_autogen/mocs_compilation.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\supportil_selftest.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\supportil_selftest.dir\\tests\\selftest.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\tests\\selftest.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/tests/selftest.cpp",
+  "output": "CMakeFiles/supportil_selftest.dir/tests/selftest.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\supportil_selftest.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\supportil_selftest.dir\\src\\reportmanager.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\reportmanager.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/reportmanager.cpp",
+  "output": "CMakeFiles/supportil_selftest.dir/src/reportmanager.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\supportil_selftest.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\supportil_selftest.dir\\src\\networkmanager.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\networkmanager.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/networkmanager.cpp",
+  "output": "CMakeFiles/supportil_selftest.dir/src/networkmanager.cpp.obj"
+},
+{
+  "directory": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/build",
+  "command": "C:\\Users\\Win10_Game_OS\\Tools\\mingw1310_64\\bin\\g++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 @CMakeFiles\\supportil_selftest.dir\\includes_CXX.rsp -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles\\supportil_selftest.dir\\src\\settingsmanager.cpp.obj -c \"C:\\Users\\Win10_Game_OS\\Documents\\CODE\\Report V\\src\\settingsmanager.cpp\"",
+  "file": "C:/Users/Win10_Game_OS/Documents/CODE/Report V/src/settingsmanager.cpp",
+  "output": "CMakeFiles/supportil_selftest.dir/src/settingsmanager.cpp.obj"
+}
+]

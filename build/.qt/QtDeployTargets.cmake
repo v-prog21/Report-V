@@ -1,0 +1,6 @@
+set(__QT_DEPLOY_TARGET_SupportIL_FILE C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/SupportIL.exe)
+set(__QT_DEPLOY_TARGET_SupportIL_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_SupportIL_RUNTIME_DLLS C:/Qt/6.7.2/mingw_64/bin/Qt6Widgets.dll;C:/Qt/6.7.2/mingw_64/bin/Qt6Network.dll;C:/Qt/6.7.2/mingw_64/bin/Qt6Sql.dll;C:/Qt/6.7.2/mingw_64/bin/Qt6Concurrent.dll;C:/Qt/6.7.2/mingw_64/bin/Qt6Gui.dll;C:/Qt/6.7.2/mingw_64/bin/Qt6Core.dll)
+set(__QT_DEPLOY_TARGET_supportil_selftest_FILE C:/Users/Win10_Game_OS/Documents/CODE/Report V/build/supportil_selftest.exe)
+set(__QT_DEPLOY_TARGET_supportil_selftest_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_supportil_selftest_RUNTIME_DLLS C:/Qt/6.7.2/mingw_64/bin/Qt6Network.dll;C:/Qt/6.7.2/mingw_64/bin/Qt6Sql.dll;C:/Qt/6.7.2/mingw_64/bin/Qt6Core.dll)
