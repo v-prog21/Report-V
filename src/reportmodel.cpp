@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QColor>
+#include <QDate>
 #include <QDateTime>
 #include <QFont>
 #include <QFontMetrics>
@@ -26,6 +27,16 @@ ReportModel::ReportModel(QObject* parent)
 void ReportModel::setSelfId(const QString& selfId)
 {
     m_selfId = selfId;
+}
+
+void ReportModel::setOnlineIds(const QSet<QString>& ids)
+{
+    if (m_onlineIds == ids)
+        return;
+    m_onlineIds = ids;
+    if (!m_reports.isEmpty()) {
+        emit dataChanged(index(0, 0), index(m_reports.size() - 1, ColCount - 1));
+    }
 }
 
 void ReportModel::setReports(const QList<Report>& reports)
@@ -84,6 +95,28 @@ QString ReportModel::activityText(const Report& report)
         return report.created;
     return QDateTime::fromMSecsSinceEpoch(ts)
         .toString(QStringLiteral("dd.MM.yyyy HH:mm"));
+}
+
+QString ReportModel::previewText(const Report& report) const
+{
+    if (report.messages.isEmpty())
+        return QStringLiteral("Нет сообщений");
+
+    const Message& last = report.messages.constLast();
+    QString body = last.text.simplified();
+    if (body.isEmpty() && !last.attachments.isEmpty())
+        body = QStringLiteral("📎 %1").arg(last.attachments.constFirst().visibleName());
+    if (body.isEmpty())
+        body = QStringLiteral("Вложение");
+
+    if (report.kind == QLatin1String("group") && !last.senderId.isEmpty()
+        && last.senderId != m_selfId) {
+        const QString sender = last.senderName.trimmed().isEmpty()
+                                   ? last.senderId.left(8)
+                                   : last.senderName.trimmed();
+        body = QStringLiteral("%1: %2").arg(sender, body);
+    }
+    return body;
 }
 
 int ReportModel::rowCount(const QModelIndex& parent) const
@@ -191,6 +224,35 @@ QVariant ReportModel::data(const QModelIndex& index, int role) const
     case UnreadRole:
         return unread;
 
+    case LastMessageRole:
+        return previewText(r);
+
+    case KindRole:
+        return direct ? QStringLiteral("direct") : QStringLiteral("group");
+
+    case OnlineRole: {
+        for (const Participant& p : r.participants) {
+            if (p.id != m_selfId && m_onlineIds.contains(p.id))
+                return true;
+        }
+        return false;
+    }
+
+    case ActivityTextRole: {
+        const qint64 ts = r.lastActivityTs > 0 ? r.lastActivityTs : r.createdTs;
+        if (ts <= 0)
+            return QString();
+        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(ts);
+        const QDate today = QDate::currentDate();
+        if (dt.date() == today)
+            return dt.toString(QStringLiteral("HH:mm"));
+        if (dt.date() == today.addDays(-1))
+            return QStringLiteral("вчера");
+        if (dt.date().year() == today.year())
+            return dt.toString(QStringLiteral("dd.MM"));
+        return dt.toString(QStringLiteral("dd.MM.yy"));
+    }
+
     default:
         break;
     }
@@ -214,55 +276,117 @@ QVariant ReportModel::headerData(int section, Qt::Orientation orientation, int r
     }
 }
 
-ReportStatusDelegate::ReportStatusDelegate(QObject* parent)
+ChatListDelegate::ChatListDelegate(QObject* parent)
     : QStyledItemDelegate(parent)
 {
 }
 
-void ReportStatusDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
-                                 const QModelIndex& index) const
+void ChatListDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
+                             const QModelIndex& index) const
 {
-    QStyleOptionViewItem opt(option);
-    initStyleOption(&opt, index);
-    opt.text.clear();
-
-    if (QStyle* style = opt.widget ? opt.widget->style() : QApplication::style())
-        style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, opt.widget);
-
-    const bool archived = index.data(ReportModel::StatusRole).toString()
-                          == QLatin1String("resolved");
-    const QString text = archived ? QStringLiteral("Архив") : QStringLiteral("Активен");
-    const QColor fg = archived ? QColor(QStringLiteral("#475569"))
-                               : QColor(QStringLiteral("#1d4ed8"));
-    const QColor bg = archived ? QColor(QStringLiteral("#e2e8f0"))
-                               : QColor(QStringLiteral("#dbeafe"));
-
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
 
-    QFont font = opt.font;
-    font.setPointSizeF(font.pointSizeF() * 0.92);
-    font.setWeight(QFont::DemiBold);
-    painter->setFont(font);
+    const bool selected = option.state & QStyle::State_Selected;
+    const bool hovered = option.state & QStyle::State_MouseOver;
+    QColor background = QColor(QStringLiteral("#ffffff"));
+    if (selected)
+        background = QColor(QStringLiteral("#e7f3ff"));
+    else if (hovered)
+        background = QColor(QStringLiteral("#f5f8fc"));
+    painter->fillRect(option.rect, background);
 
-    const QFontMetrics fm(font);
-    const int w = qMin(opt.rect.width() - 14, fm.horizontalAdvance(text) + 28);
-    const int h = 23;
-    const QRect badge(opt.rect.center().x() - w / 2, opt.rect.center().y() - h / 2, w, h);
+    painter->setPen(QColor(QStringLiteral("#f1f5f9")));
+    painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
 
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(bg);
-    painter->drawRoundedRect(badge, h / 2.0, h / 2.0);
+    const QRect r = option.rect.adjusted(14, 10, -14, -9);
+    const bool group = index.data(ReportModel::KindRole).toString()
+                       == QLatin1String("group");
+    const bool online = index.data(ReportModel::OnlineRole).toBool();
+    const int unread = index.data(ReportModel::UnreadRole).toInt();
+    const QString title = index.data(Qt::DisplayRole).toString();
+    const QString time = index.data(ReportModel::ActivityTextRole).toString();
+    const QString preview = index.data(ReportModel::LastMessageRole).toString();
 
-    painter->setPen(fg);
-    painter->drawText(badge, Qt::AlignCenter, text);
+    QFont titleFont = option.font;
+    titleFont.setWeight(unread > 0 ? QFont::Bold : QFont::DemiBold);
+    if (titleFont.pointSizeF() > 0)
+        titleFont.setPointSizeF(titleFont.pointSizeF() * 1.03);
+    QFont smallFont = option.font;
+    if (smallFont.pointSizeF() > 0)
+        smallFont.setPointSizeF(smallFont.pointSizeF() * 0.9);
+
+    // Индикатор: точка онлайн/офлайн для личных чатов, иконка группы.
+    const QRect indicator(r.left(), r.top(), 18, 20);
+    if (group) {
+        painter->setFont(smallFont);
+        painter->setPen(QColor(QStringLiteral("#64748b")));
+        painter->drawText(indicator, Qt::AlignLeft | Qt::AlignVCenter,
+                          QStringLiteral("👥"));
+    } else {
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(online ? QColor(QStringLiteral("#31a24c"))
+                                 : QColor(QStringLiteral("#9aa0a6")));
+        painter->drawEllipse(QPointF(indicator.left() + 5, indicator.center().y()), 4, 4);
+    }
+
+    const int textLeft = r.left() + 24;
+
+    // Время справа в первой строке.
+    const QFontMetrics smallFm(smallFont);
+    const int timeWidth = qMin(smallFm.horizontalAdvance(time), 64);
+    const QRect timeRect(r.right() - timeWidth, r.top(), timeWidth, 20);
+    painter->setFont(smallFont);
+    painter->setPen(QColor(QStringLiteral("#94a3b8")));
+    painter->drawText(timeRect, Qt::AlignRight | Qt::AlignVCenter, time);
+
+    // Имя чата.
+    const QFontMetrics titleFm(titleFont);
+    const int titleWidth = qMax(0, timeRect.left() - textLeft - 8);
+    painter->setFont(titleFont);
+    painter->setPen(QColor(QStringLiteral("#0f172a")));
+    painter->drawText(QRect(textLeft, r.top(), titleWidth, 20),
+                      Qt::AlignLeft | Qt::AlignVCenter,
+                      titleFm.elidedText(title, Qt::ElideRight, titleWidth));
+
+    // Бейдж непрочитанных справа во второй строке.
+    int badgeWidth = 0;
+    if (unread > 0) {
+        QFont badgeFont = smallFont;
+        badgeFont.setBold(true);
+        const QFontMetrics badgeFm(badgeFont);
+        const QString text = unread > 99 ? QStringLiteral("99+")
+                                         : QString::number(unread);
+        badgeWidth = qMax(20, badgeFm.horizontalAdvance(text) + 10);
+        const int badgeHeight = 18;
+        const QRect badge(r.right() - badgeWidth, r.bottom() - badgeHeight,
+                          badgeWidth, badgeHeight);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(QStringLiteral("#2f80ed")));
+        painter->drawRoundedRect(badge, 9, 9);
+        painter->setFont(badgeFont);
+        painter->setPen(Qt::white);
+        painter->drawText(badge, Qt::AlignCenter, text);
+    }
+
+    // Последнее сообщение.
+    const QFontMetrics previewFm(smallFont);
+    const int previewWidth = qMax(0, r.right() - badgeWidth
+                                         - (badgeWidth > 0 ? 8 : 0) - textLeft);
+    const QRect previewRect(textLeft, r.bottom() - 20, previewWidth, 20);
+    painter->setFont(smallFont);
+    painter->setPen(unread > 0 ? QColor(QStringLiteral("#334155"))
+                               : QColor(QStringLiteral("#64748b")));
+    painter->drawText(previewRect, Qt::AlignLeft | Qt::AlignVCenter,
+                      previewFm.elidedText(preview, Qt::ElideRight, previewWidth));
+
     painter->restore();
 }
 
-QSize ReportStatusDelegate::sizeHint(const QStyleOptionViewItem& option,
-                                     const QModelIndex& index) const
+QSize ChatListDelegate::sizeHint(const QStyleOptionViewItem& option,
+                                 const QModelIndex& index) const
 {
-    QSize size = QStyledItemDelegate::sizeHint(option, index);
-    size.setWidth(qMax(size.width(), 90));
-    return size;
+    Q_UNUSED(option)
+    Q_UNUSED(index)
+    return QSize(300, 68);
 }

@@ -100,16 +100,16 @@ int ReportModel::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 namespace {
 
 #ifdef QT_MOC_HAS_STRINGDATA
-struct qt_meta_stringdata_CLASSReportStatusDelegateENDCLASS_t {};
-constexpr auto qt_meta_stringdata_CLASSReportStatusDelegateENDCLASS = QtMocHelpers::stringData(
-    "ReportStatusDelegate"
+struct qt_meta_stringdata_CLASSChatListDelegateENDCLASS_t {};
+constexpr auto qt_meta_stringdata_CLASSChatListDelegateENDCLASS = QtMocHelpers::stringData(
+    "ChatListDelegate"
 );
 #else  // !QT_MOC_HAS_STRINGDATA
 #error "qtmochelpers.h not found or too old."
 #endif // !QT_MOC_HAS_STRINGDATA
 } // unnamed namespace
 
-Q_CONSTINIT static const uint qt_meta_data_CLASSReportStatusDelegateENDCLASS[] = {
+Q_CONSTINIT static const uint qt_meta_data_CLASSChatListDelegateENDCLASS[] = {
 
  // content:
       12,       // revision
@@ -125,20 +125,20 @@ Q_CONSTINIT static const uint qt_meta_data_CLASSReportStatusDelegateENDCLASS[] =
        0        // eod
 };
 
-Q_CONSTINIT const QMetaObject ReportStatusDelegate::staticMetaObject = { {
+Q_CONSTINIT const QMetaObject ChatListDelegate::staticMetaObject = { {
     QMetaObject::SuperData::link<QStyledItemDelegate::staticMetaObject>(),
-    qt_meta_stringdata_CLASSReportStatusDelegateENDCLASS.offsetsAndSizes,
-    qt_meta_data_CLASSReportStatusDelegateENDCLASS,
+    qt_meta_stringdata_CLASSChatListDelegateENDCLASS.offsetsAndSizes,
+    qt_meta_data_CLASSChatListDelegateENDCLASS,
     qt_static_metacall,
     nullptr,
-    qt_incomplete_metaTypeArray<qt_meta_stringdata_CLASSReportStatusDelegateENDCLASS_t,
+    qt_incomplete_metaTypeArray<qt_meta_stringdata_CLASSChatListDelegateENDCLASS_t,
         // Q_OBJECT / Q_GADGET
-        QtPrivate::TypeAndForceComplete<ReportStatusDelegate, std::true_type>
+        QtPrivate::TypeAndForceComplete<ChatListDelegate, std::true_type>
     >,
     nullptr
 } };
 
-void ReportStatusDelegate::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
+void ChatListDelegate::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
 {
     (void)_o;
     (void)_id;
@@ -146,20 +146,20 @@ void ReportStatusDelegate::qt_static_metacall(QObject *_o, QMetaObject::Call _c,
     (void)_a;
 }
 
-const QMetaObject *ReportStatusDelegate::metaObject() const
+const QMetaObject *ChatListDelegate::metaObject() const
 {
     return QObject::d_ptr->metaObject ? QObject::d_ptr->dynamicMetaObject() : &staticMetaObject;
 }
 
-void *ReportStatusDelegate::qt_metacast(const char *_clname)
+void *ChatListDelegate::qt_metacast(const char *_clname)
 {
     if (!_clname) return nullptr;
-    if (!strcmp(_clname, qt_meta_stringdata_CLASSReportStatusDelegateENDCLASS.stringdata0))
+    if (!strcmp(_clname, qt_meta_stringdata_CLASSChatListDelegateENDCLASS.stringdata0))
         return static_cast<void*>(this);
     return QStyledItemDelegate::qt_metacast(_clname);
 }
 
-int ReportStatusDelegate::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
+int ChatListDelegate::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 {
     _id = QStyledItemDelegate::qt_metacall(_c, _id, _a);
     return _id;

@@ -1,3 +1,9 @@
 build/
-*.exe
 .vscode/
+*.exe
+*.dll
+*.obj
+*.o
+*.pdb
+CMakeCache.txt
+CMakeFiles/

@@ -38,17 +38,14 @@ protected:
     void closeEvent(QCloseEvent* event) override;
 
 private slots:
-    void startDirectChat();
+    void showNewChatDialog();
     void createGroupChat();
     void addGroupMembers();
-    void onPeerActivated(QListWidgetItem* item);
+    void deleteCurrentChat();
     void refreshAllLists();
     void onActiveSelectionChanged();
-    void onArchiveSelectionChanged();
     void sendMessage();
     void attachFiles();
-    void archiveSelected();
-    void deleteSelectedArchive();
     void saveSettings();
     void autoRefresh();
     void onRosterChanged();
@@ -62,7 +59,6 @@ private slots:
 private:
     QWidget* buildHeaderBar();
     QWidget* buildMessengerTab();
-    QWidget* buildArchiveTab();
     QWidget* buildRepoTab();
     QWidget* buildSettingsTab();
 
@@ -83,21 +79,20 @@ private:
     bool restoreSelection(QTableView* table, QSortFilterProxyModel* proxy,
                           ReportModel* model, const QString& reportId);
     void displayActiveChat();
-    void displayArchiveChat();
+    void updateChatHeader(const Report& report);
     void clearActiveChat();
-    void clearArchiveChat();
     void updateTabsUnreadCount();
     void updateHeaderStatus();
     void updateSettingsInfo();
     void updatePendingFilesUi();
     void updateActiveActions();
-    void updateArchiveActions();
 
-    void refreshPeerList();
     void handleAttachmentAction(const Report& report, const Attachment& attachment);
     void maybeStartNetwork();
     void syncPeerNames();
+    QSet<QString> onlinePeerIds() const;
     static QString peerLabel(const PeerInfo& peer);
+    static QString messageTimeText(qint64 timestamp, const QString& fallback);
 
     ReportManager m_rm;
     NetworkManager m_network;
@@ -113,16 +108,15 @@ private:
 
     // --- Мессенджер ---
     QWidget* m_messengerTab = nullptr;
-    QLabel* m_selfLabel = nullptr;
-    QListWidget* m_peerList = nullptr;
-    QPushButton* m_startChatButton = nullptr;
-    QPushButton* m_createGroupButton = nullptr;
+    QLineEdit* m_chatSearchEdit = nullptr;
+    QPushButton* m_newChatButton = nullptr;
 
     QTableView* m_chatTable = nullptr;
     ReportModel* m_chatModel = nullptr;
     QSortFilterProxyModel* m_chatProxy = nullptr;
 
     QLabel* m_chatDetail = nullptr;
+    QLabel* m_chatStatusLabel = nullptr;
     QWidget* m_chatAttachWidget = nullptr;
     QHBoxLayout* m_chatAttachLayout = nullptr;
     QScrollArea* m_chatScroll = nullptr;
@@ -133,24 +127,10 @@ private:
     QPushButton* m_attachButton = nullptr;
     QPushButton* m_clearFilesButton = nullptr;
     QPushButton* m_addMembersButton = nullptr;
-    QPushButton* m_archiveButton = nullptr;
+    QPushButton* m_deleteChatButton = nullptr;
     QLabel* m_pendingFilesLabel = nullptr;
     QStringList m_pendingFiles;
     QString m_currentChatId;
-
-    // --- Архив ---
-    QWidget* m_archiveTab = nullptr;
-    QTableView* m_archiveTable = nullptr;
-    ReportModel* m_archiveModel = nullptr;
-    QSortFilterProxyModel* m_archiveProxy = nullptr;
-    QLabel* m_archiveDetail = nullptr;
-    QWidget* m_archiveAttachWidget = nullptr;
-    QHBoxLayout* m_archiveAttachLayout = nullptr;
-    QScrollArea* m_archiveScroll = nullptr;
-    QWidget* m_archiveCanvas = nullptr;
-    QVBoxLayout* m_archiveLayout = nullptr;
-    QPushButton* m_archiveDeleteButton = nullptr;
-    QString m_currentArchiveId;
 
     // --- Приборы ---
     DevicesWidget* m_devicesWidget = nullptr;

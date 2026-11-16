@@ -475,6 +475,7 @@ CMakeFiles/SupportIL.dir/src/mainwindow.cpp.obj: \
  C:/Qt/6.7.2/mingw_64/include/QtGui/qscreen_platform.h \
  C:/Qt/6.7.2/mingw_64/include/QtGui/QColor \
  C:/Qt/6.7.2/mingw_64/include/QtGui/qcolor.h \
+ C:/Qt/6.7.2/mingw_64/include/QtCore/QDate \
  C:/Qt/6.7.2/mingw_64/include/QtGui/QDesktopServices \
  C:/Qt/6.7.2/mingw_64/include/QtGui/qdesktopservices.h \
  C:/Qt/6.7.2/mingw_64/include/QtWidgets/QDialog \

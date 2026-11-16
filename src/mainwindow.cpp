@@ -8,6 +8,7 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QColor>
+#include <QDate>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDialog>
@@ -85,16 +86,15 @@ MainWindow::MainWindow(QWidget* parent)
     root->addWidget(buildHeaderBar());
 
     m_tabs = new QTabWidget;
+    m_tabs->setObjectName(QStringLiteral("mainTabs"));
     m_tabs->setDocumentMode(true);
 
     m_messengerTab = buildMessengerTab();
-    m_archiveTab = buildArchiveTab();
     m_devicesWidget = new DevicesWidget;
     m_settingsTab = buildSettingsTab();
 
-    m_tabs->addTab(m_devicesWidget, QStringLiteral("Приборы"));
     m_tabs->addTab(m_messengerTab, QStringLiteral("Мессенджер"));
-    m_tabs->addTab(m_archiveTab, QStringLiteral("Архив"));
+    m_tabs->addTab(m_devicesWidget, QStringLiteral("Приборы"));
     m_tabs->addTab(buildRepoTab(), QStringLiteral("Фишки"));
     m_tabs->addTab(m_settingsTab, QStringLiteral("Настройки"));
 
@@ -102,7 +102,11 @@ MainWindow::MainWindow(QWidget* parent)
         if (m_tabs->currentWidget() != m_messengerTab)
             return;
         if (m_currentChatId.isEmpty() && m_chatModel->rowCount() > 0) {
-            m_currentChatId = m_chatModel->at(0).id;
+            const QModelIndex first = m_chatProxy->index(0, ReportModel::ColTitle);
+            if (first.isValid()) {
+                m_currentChatId =
+                    m_chatModel->at(m_chatProxy->mapToSource(first).row()).id;
+            }
             QSignalBlocker blocker(m_chatTable->selectionModel());
             restoreSelection(m_chatTable, m_chatProxy, m_chatModel, m_currentChatId);
         }
@@ -168,7 +172,6 @@ void MainWindow::maybeStartNetwork()
         if (!m_network.start())
             statusBar()->showMessage(QStringLiteral("Сетевая служба не запущена."), 6000);
     }
-    refreshPeerList();
 }
 
 QWidget* MainWindow::buildHeaderBar()
@@ -207,92 +210,132 @@ QWidget* MainWindow::buildMessengerTab()
     auto* tab = new QWidget;
 
     auto* splitter = new QSplitter(Qt::Horizontal);
+    splitter->setObjectName(QStringLiteral("chatSplitter"));
     splitter->setChildrenCollapsible(false);
+    splitter->setHandleWidth(1);
 
-    // ------------------------- Левая панель -------------------------
+    // ------------------------- Левая панель: диалоги -------------------------
     auto* left = new QWidget;
+    left->setObjectName(QStringLiteral("chatListPanel"));
+    left->setMinimumWidth(320);
     auto* leftLayout = new QVBoxLayout(left);
-    leftLayout->setContentsMargins(12, 12, 8, 12);
-    leftLayout->setSpacing(10);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(0);
 
-    auto* usersGroup = new QGroupBox(QStringLiteral("Пользователи"));
-    auto* usersLayout = new QVBoxLayout(usersGroup);
+    auto* searchRow = new QWidget;
+    searchRow->setObjectName(QStringLiteral("chatListTop"));
+    auto* searchLayout = new QHBoxLayout(searchRow);
+    searchLayout->setContentsMargins(12, 12, 12, 10);
+    searchLayout->setSpacing(8);
 
-    m_selfLabel = new QLabel;
-    m_selfLabel->setObjectName(QStringLiteral("chip"));
-    m_selfLabel->setTextFormat(Qt::RichText);
-    usersLayout->addWidget(m_selfLabel);
+    m_chatSearchEdit = new QLineEdit;
+    m_chatSearchEdit->setObjectName(QStringLiteral("chatSearch"));
+    m_chatSearchEdit->setPlaceholderText(QStringLiteral("Поиск…"));
+    m_chatSearchEdit->setClearButtonEnabled(true);
+    searchLayout->addWidget(m_chatSearchEdit, 1);
 
-    m_peerList = new QListWidget;
-    m_peerList->setObjectName(QStringLiteral("linkList"));
-    m_peerList->setMinimumHeight(120);
-    usersLayout->addWidget(m_peerList, 1);
+    m_newChatButton = new QPushButton(QStringLiteral("✏ Новый чат"));
+    m_newChatButton->setObjectName(QStringLiteral("btnNewChat"));
+    m_newChatButton->setToolTip(QStringLiteral("Начать личный или групповой чат"));
+    m_newChatButton->setCursor(Qt::PointingHandCursor);
+    searchLayout->addWidget(m_newChatButton);
 
-    auto* peerButtons = new QHBoxLayout;
-    m_startChatButton = new QPushButton(QStringLiteral("Написать"));
-    m_createGroupButton = new QPushButton(QStringLiteral("Создать группу"));
-    m_createGroupButton->setObjectName(QStringLiteral("btnSecondary"));
-    peerButtons->addWidget(m_startChatButton);
-    peerButtons->addWidget(m_createGroupButton);
-    usersLayout->addLayout(peerButtons);
+    leftLayout->addWidget(searchRow);
 
-    leftLayout->addWidget(usersGroup, 2);
-
-    auto* chatsGroup = new QGroupBox(QStringLiteral("Чаты"));
-    auto* chatsLayout = new QVBoxLayout(chatsGroup);
     m_chatTable = new QTableView;
+    m_chatTable->setObjectName(QStringLiteral("chatList"));
     m_chatModel = new ReportModel(this);
     m_chatProxy = new QSortFilterProxyModel(this);
     m_chatProxy->setSourceModel(m_chatModel);
-    m_chatProxy->setFilterKeyColumn(-1);
+    m_chatProxy->setFilterKeyColumn(ReportModel::ColTitle);
     m_chatProxy->setFilterRole(ReportModel::FilterRole);
+    m_chatProxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
     m_chatProxy->setSortRole(ReportModel::SortRole);
     m_chatProxy->setDynamicSortFilter(false);
+
     m_chatTable->setModel(m_chatProxy);
     m_chatTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_chatTable->setSelectionMode(QAbstractItemView::SingleSelection);
     m_chatTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_chatTable->setSortingEnabled(true);
-    m_chatTable->setItemDelegateForColumn(ReportModel::ColStatus,
-                                          new ReportStatusDelegate(m_chatTable));
+    m_chatTable->setShowGrid(false);
+    m_chatTable->setFrameShape(QFrame::NoFrame);
+    m_chatTable->setWordWrap(false);
+    m_chatTable->setMouseTracking(true);
+    m_chatTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_chatTable->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    m_chatTable->setItemDelegate(new ChatListDelegate(m_chatTable));
+    m_chatTable->horizontalHeader()->setVisible(false);
+    m_chatTable->verticalHeader()->setVisible(false);
+    m_chatTable->verticalHeader()->setDefaultSectionSize(68);
+    m_chatTable->verticalHeader()->setMinimumSectionSize(68);
+    for (int column = 0; column < ReportModel::ColCount; ++column) {
+        if (column != ReportModel::ColTitle)
+            m_chatTable->setColumnHidden(column, true);
+    }
     m_chatTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColTitle,
                                                           QHeaderView::Stretch);
-    m_chatTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColType,
-                                                          QHeaderView::ResizeToContents);
-    m_chatTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColMessages,
-                                                          QHeaderView::ResizeToContents);
-    m_chatTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColStatus,
-                                                          QHeaderView::ResizeToContents);
-    m_chatTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColUpdated,
-                                                          QHeaderView::ResizeToContents);
-    m_chatTable->setColumnHidden(ReportModel::ColId, true);
-    m_chatTable->verticalHeader()->setVisible(false);
-    m_chatTable->sortByColumn(ReportModel::ColUpdated, Qt::DescendingOrder);
-    chatsLayout->addWidget(m_chatTable);
-    leftLayout->addWidget(chatsGroup, 3);
+    leftLayout->addWidget(m_chatTable, 1);
 
     connect(m_chatTable->selectionModel(), &QItemSelectionModel::selectionChanged,
             this, &MainWindow::onActiveSelectionChanged);
-    connect(m_startChatButton, &QPushButton::clicked, this, &MainWindow::startDirectChat);
-    connect(m_createGroupButton, &QPushButton::clicked, this, &MainWindow::createGroupChat);
-    connect(m_peerList, &QListWidget::itemDoubleClicked,
-            this, &MainWindow::onPeerActivated);
+    connect(m_newChatButton, &QPushButton::clicked, this, &MainWindow::showNewChatDialog);
+    connect(m_chatSearchEdit, &QLineEdit::textChanged, this, [this](const QString& text) {
+        if (!m_chatProxy)
+            return;
+        m_chatProxy->setFilterFixedString(text.trimmed());
+        if (!m_currentChatId.isEmpty()) {
+            QSignalBlocker blocker(m_chatTable->selectionModel());
+            restoreSelection(m_chatTable, m_chatProxy, m_chatModel, m_currentChatId);
+        }
+    });
 
-    // ------------------------- Правая панель ------------------------
+    // ------------------------- Правая панель: чат ---------------------------
     auto* right = new QWidget;
+    right->setObjectName(QStringLiteral("chatPanel"));
     auto* rightLayout = new QVBoxLayout(right);
-    rightLayout->setContentsMargins(8, 12, 12, 12);
-    rightLayout->setSpacing(8);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setSpacing(0);
 
-    m_chatDetail = new QLabel(QStringLiteral("Выберите чат слева или начните переписку."));
-    m_chatDetail->setObjectName(QStringLiteral("detailTitle"));
-    m_chatDetail->setWordWrap(true);
-    m_chatDetail->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    rightLayout->addWidget(m_chatDetail);
+    auto* header = new QWidget;
+    header->setObjectName(QStringLiteral("chatHeader"));
+    auto* headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(16, 10, 16, 10);
+    headerLayout->setSpacing(10);
+
+    auto* titleColumn = new QVBoxLayout;
+    titleColumn->setContentsMargins(0, 0, 0, 0);
+    titleColumn->setSpacing(1);
+
+    m_chatDetail = new QLabel(QStringLiteral("Выберите чат слева или начните новый"));
+    m_chatDetail->setObjectName(QStringLiteral("chatHeaderTitle"));
+    m_chatDetail->setTextFormat(Qt::PlainText);
+    titleColumn->addWidget(m_chatDetail);
+
+    m_chatStatusLabel = new QLabel;
+    m_chatStatusLabel->setObjectName(QStringLiteral("chatHeaderStatus"));
+    m_chatStatusLabel->setTextFormat(Qt::RichText);
+    titleColumn->addWidget(m_chatStatusLabel);
+
+    headerLayout->addLayout(titleColumn, 1);
+
+    m_addMembersButton = new QPushButton(QStringLiteral("👥 Участники"));
+    m_addMembersButton->setObjectName(QStringLiteral("btnGhost"));
+    m_addMembersButton->setToolTip(QStringLiteral("Добавить пользователей в групповой чат"));
+    m_addMembersButton->setVisible(false);
+
+    m_deleteChatButton = new QPushButton(QStringLiteral("🗑 Удалить чат"));
+    m_deleteChatButton->setObjectName(QStringLiteral("btnGhostDanger"));
+    m_deleteChatButton->setToolTip(QStringLiteral("Удалить чат у всех участников"));
+    m_deleteChatButton->setVisible(false);
+
+    headerLayout->addWidget(m_addMembersButton);
+    headerLayout->addWidget(m_deleteChatButton);
+    rightLayout->addWidget(header);
+    rightLayout->addWidget(makeHLine());
 
     m_chatAttachWidget = new QWidget;
     m_chatAttachLayout = new QHBoxLayout(m_chatAttachWidget);
-    m_chatAttachLayout->setContentsMargins(0, 0, 0, 0);
+    m_chatAttachLayout->setContentsMargins(16, 8, 16, 0);
     m_chatAttachLayout->setSpacing(6);
     m_chatAttachWidget->setVisible(false);
     rightLayout->addWidget(m_chatAttachWidget);
@@ -304,7 +347,7 @@ QWidget* MainWindow::buildMessengerTab()
     m_chatCanvas = new QWidget;
     m_chatCanvas->setObjectName(QStringLiteral("chatCanvas"));
     m_chatLayout = new QVBoxLayout(m_chatCanvas);
-    m_chatLayout->setContentsMargins(10, 8, 10, 8);
+    m_chatLayout->setContentsMargins(14, 12, 14, 12);
     m_chatLayout->setSpacing(6);
     m_chatLayout->setAlignment(Qt::AlignTop);
     showChatPlaceholder(m_chatLayout, QStringLiteral("Сообщений пока нет."));
@@ -313,11 +356,15 @@ QWidget* MainWindow::buildMessengerTab()
 
     m_pendingFilesLabel = new QLabel;
     m_pendingFilesLabel->setObjectName(QStringLiteral("muted"));
+    m_pendingFilesLabel->setWordWrap(true);
+    m_pendingFilesLabel->setContentsMargins(16, 0, 16, 0);
     m_pendingFilesLabel->setVisible(false);
     rightLayout->addWidget(m_pendingFilesLabel);
 
     auto* inputRow = new QHBoxLayout;
-    m_attachButton = new QPushButton(QStringLiteral("Файл"));
+    inputRow->setContentsMargins(12, 8, 12, 12);
+    inputRow->setSpacing(8);
+    m_attachButton = new QPushButton(QStringLiteral("📎 Прикрепить"));
     m_attachButton->setObjectName(QStringLiteral("btnSecondary"));
     m_attachButton->setToolTip(QStringLiteral("Прикрепить файлы к сообщению"));
     m_clearFilesButton = new QPushButton(QStringLiteral("×"));
@@ -325,22 +372,15 @@ QWidget* MainWindow::buildMessengerTab()
     m_clearFilesButton->setToolTip(QStringLiteral("Убрать вложения"));
     m_clearFilesButton->setVisible(false);
     m_messageInput = new QLineEdit;
-    m_messageInput->setPlaceholderText(QStringLiteral("Введите сообщение…"));
-    m_sendButton = new QPushButton(QStringLiteral("Отправить"));
+    m_messageInput->setObjectName(QStringLiteral("messageInput"));
+    m_messageInput->setPlaceholderText(QStringLiteral("Написать сообщение…"));
+    m_sendButton = new QPushButton(QStringLiteral("→ Отправить"));
     m_sendButton->setObjectName(QStringLiteral("btnSend"));
     m_sendButton->setDefault(true);
-    m_addMembersButton = new QPushButton(QStringLiteral("Участники"));
-    m_addMembersButton->setObjectName(QStringLiteral("btnSecondary"));
-    m_addMembersButton->setToolTip(QStringLiteral("Добавить пользователей в групповой чат"));
-    m_addMembersButton->setVisible(false);
-    m_archiveButton = new QPushButton(QStringLiteral("В архив"));
-    m_archiveButton->setObjectName(QStringLiteral("btnSecondary"));
     inputRow->addWidget(m_attachButton);
     inputRow->addWidget(m_clearFilesButton);
     inputRow->addWidget(m_messageInput, 1);
     inputRow->addWidget(m_sendButton);
-    inputRow->addWidget(m_addMembersButton);
-    inputRow->addWidget(m_archiveButton);
     rightLayout->addLayout(inputRow);
 
     connect(m_messageInput, &QLineEdit::returnPressed, this, &MainWindow::sendMessage);
@@ -350,110 +390,21 @@ QWidget* MainWindow::buildMessengerTab()
         m_pendingFiles.clear();
         updatePendingFilesUi();
     });
-    connect(m_archiveButton, &QPushButton::clicked, this, &MainWindow::archiveSelected);
     connect(m_addMembersButton, &QPushButton::clicked, this, &MainWindow::addGroupMembers);
+    connect(m_deleteChatButton, &QPushButton::clicked, this, &MainWindow::deleteCurrentChat);
 
     splitter->addWidget(left);
     splitter->addWidget(right);
-    splitter->setStretchFactor(0, 3);
-    splitter->setStretchFactor(1, 4);
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 2);
+    splitter->setSizes({340, 940});
 
     auto* layout = new QVBoxLayout(tab);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(splitter);
 
     updateActiveActions();
-    return tab;
-}
-
-QWidget* MainWindow::buildArchiveTab()
-{
-    auto* tab = new QWidget;
-    auto* splitter = new QSplitter(Qt::Horizontal);
-
-    auto* left = new QWidget;
-    auto* leftLayout = new QVBoxLayout(left);
-    leftLayout->setContentsMargins(12, 12, 8, 12);
-
-    m_archiveTable = new QTableView;
-    m_archiveModel = new ReportModel(this);
-    m_archiveProxy = new QSortFilterProxyModel(this);
-    m_archiveProxy->setSourceModel(m_archiveModel);
-    m_archiveProxy->setFilterRole(ReportModel::FilterRole);
-    m_archiveProxy->setSortRole(ReportModel::SortRole);
-    m_archiveProxy->setDynamicSortFilter(false);
-    m_archiveTable->setModel(m_archiveProxy);
-    m_archiveTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_archiveTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_archiveTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_archiveTable->setSortingEnabled(true);
-    m_archiveTable->setItemDelegateForColumn(ReportModel::ColStatus,
-                                             new ReportStatusDelegate(m_archiveTable));
-    m_archiveTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColTitle,
-                                                             QHeaderView::Stretch);
-    m_archiveTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColType,
-                                                             QHeaderView::ResizeToContents);
-    m_archiveTable->horizontalHeader()->setSectionResizeMode(ReportModel::ColMessages,
-                                                             QHeaderView::ResizeToContents);
-    m_archiveTable->setColumnHidden(ReportModel::ColId, true);
-    m_archiveTable->verticalHeader()->setVisible(false);
-    m_archiveTable->sortByColumn(ReportModel::ColUpdated, Qt::DescendingOrder);
-    leftLayout->addWidget(m_archiveTable, 1);
-
-    connect(m_archiveTable->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &MainWindow::onArchiveSelectionChanged);
-
-    auto* right = new QWidget;
-    auto* rightLayout = new QVBoxLayout(right);
-    rightLayout->setContentsMargins(8, 12, 12, 12);
-    rightLayout->setSpacing(8);
-
-    m_archiveDetail = new QLabel(QStringLiteral("Выберите чат в архиве."));
-    m_archiveDetail->setWordWrap(true);
-    m_archiveDetail->setObjectName(QStringLiteral("detailTitle"));
-    rightLayout->addWidget(m_archiveDetail);
-
-    m_archiveAttachWidget = new QWidget;
-    m_archiveAttachLayout = new QHBoxLayout(m_archiveAttachWidget);
-    m_archiveAttachLayout->setContentsMargins(0, 0, 0, 0);
-    m_archiveAttachLayout->setSpacing(6);
-    m_archiveAttachWidget->setVisible(false);
-    rightLayout->addWidget(m_archiveAttachWidget);
-
-    m_archiveScroll = new QScrollArea;
-    m_archiveScroll->setObjectName(QStringLiteral("chatScroll"));
-    m_archiveScroll->setWidgetResizable(true);
-    m_archiveScroll->setFrameShape(QFrame::NoFrame);
-    m_archiveCanvas = new QWidget;
-    m_archiveCanvas->setObjectName(QStringLiteral("chatCanvas"));
-    m_archiveLayout = new QVBoxLayout(m_archiveCanvas);
-    m_archiveLayout->setContentsMargins(10, 8, 10, 8);
-    m_archiveLayout->setSpacing(6);
-    m_archiveLayout->setAlignment(Qt::AlignTop);
-    showChatPlaceholder(m_archiveLayout, QStringLiteral("Сообщений нет."));
-    m_archiveScroll->setWidget(m_archiveCanvas);
-    rightLayout->addWidget(m_archiveScroll, 1);
-
-    auto* actions = new QHBoxLayout;
-    actions->addStretch(1);
-    m_archiveDeleteButton = new QPushButton(QStringLiteral("Удалить чат"));
-    m_archiveDeleteButton->setObjectName(QStringLiteral("btnDanger"));
-    actions->addWidget(m_archiveDeleteButton);
-    rightLayout->addLayout(actions);
-
-    connect(m_archiveDeleteButton, &QPushButton::clicked,
-            this, &MainWindow::deleteSelectedArchive);
-
-    splitter->addWidget(left);
-    splitter->addWidget(right);
-    splitter->setStretchFactor(0, 3);
-    splitter->setStretchFactor(1, 4);
-
-    auto* layout = new QVBoxLayout(tab);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->addWidget(splitter);
-
-    updateArchiveActions();
+    updatePendingFilesUi();
     return tab;
 }
 
@@ -579,18 +530,24 @@ QString MainWindow::peerLabel(const PeerInfo& peer)
     return peer.name.trimmed().isEmpty() ? peer.id.left(8) : peer.name.trimmed();
 }
 
-void MainWindow::refreshPeerList()
+void MainWindow::showNewChatDialog()
 {
-    if (!m_peerList)
-        return;
+    QDialog dialog(this);
+    dialog.setWindowTitle(QStringLiteral("Новый чат"));
+    dialog.resize(480, 540);
 
-    QSignalBlocker blocker(m_peerList);
+    auto* layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(10);
 
-    m_peerList->clear();
-    if (m_selfLabel) {
-        m_selfLabel->setText(QStringLiteral("Вы: <b>%1</b>")
-                                 .arg(m_rm.selfName().toHtmlEscaped()));
-    }
+    auto* search = new QLineEdit(&dialog);
+    search->setPlaceholderText(QStringLiteral("Поиск по имени…"));
+    search->setClearButtonEnabled(true);
+    layout->addWidget(search);
+
+    auto* list = new QListWidget(&dialog);
+    list->setObjectName(QStringLiteral("linkList"));
+    list->setSelectionMode(QAbstractItemView::SingleSelection);
 
     QList<PeerInfo> peers = m_network.peers();
     std::sort(peers.begin(), peers.end(), [](const PeerInfo& a, const PeerInfo& b) {
@@ -600,53 +557,107 @@ void MainWindow::refreshPeerList()
     });
 
     for (const PeerInfo& peer : peers) {
-        const QString dot = peer.online ? QStringLiteral("●") : QStringLiteral("○");
-        const QString state = peer.online ? QStringLiteral("в сети")
-                                          : QStringLiteral("не в сети");
+        if (peer.id == m_rm.selfId() || peer.id.isEmpty())
+            continue;
         auto* item = new QListWidgetItem(
-            QStringLiteral("%1  %2 — %3").arg(dot, peerLabel(peer), state));
+            QStringLiteral("%1  %2  —  %3")
+                .arg(peer.online ? QStringLiteral("●") : QStringLiteral("○"),
+                     peerLabel(peer),
+                     peer.online ? QStringLiteral("в сети") : QStringLiteral("не в сети")),
+            list);
         item->setData(Qt::UserRole, peer.id);
         item->setData(Qt::UserRole + 1, peer.name);
-        item->setForeground(peer.online ? QColor(QStringLiteral("#047857"))
-                                        : QColor(QStringLiteral("#64748b")));
+        item->setData(Qt::UserRole + 2, peer.online);
+        item->setForeground(peer.online ? QColor(QStringLiteral("#31a24c"))
+                                        : QColor(QStringLiteral("#9aa0a6")));
         item->setToolTip(peer.online
-                             ? QStringLiteral("Дважды щёлкните, чтобы написать")
-                             : QStringLiteral("Пользователь появится в сети позже. "
-                                              "Чат можно начать сейчас — сообщение "
-                                              "доставится автоматически."));
-        m_peerList->addItem(item);
+                             ? QStringLiteral("Дважды щёлкните, чтобы начать чат")
+                             : QStringLiteral("Пользователь не в сети. Чат можно начать "
+                                              "сейчас — сообщение доставится, когда он "
+                                              "появится в сети."));
+    }
+    layout->addWidget(list, 1);
+
+    auto* hint = new QLabel(QStringLiteral(
+        "Показаны все известные пользователи, включая тех, кто сейчас не в сети. "
+        "Чтобы начать групповой чат, нажмите «Создать группу»."),
+        &dialog);
+    hint->setWordWrap(true);
+    hint->setObjectName(QStringLiteral("muted"));
+    layout->addWidget(hint);
+
+    auto* buttons = new QDialogButtonBox(&dialog);
+    auto* writeButton = buttons->addButton(QStringLiteral("Написать"),
+                                           QDialogButtonBox::AcceptRole);
+    writeButton->setDefault(true);
+    auto* groupButton = buttons->addButton(QStringLiteral("Создать группу"),
+                                           QDialogButtonBox::ActionRole);
+    Q_UNUSED(groupButton)
+    buttons->addButton(QStringLiteral("Отмена"), QDialogButtonBox::RejectRole);
+    layout->addWidget(buttons);
+
+    auto applyFilter = [list, search] {
+        const QString text = search->text().trimmed();
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem* item = list->item(i);
+            const bool matches = text.isEmpty()
+                                 || item->text().contains(text, Qt::CaseInsensitive)
+                                 || item->data(Qt::UserRole + 1).toString()
+                                        .contains(text, Qt::CaseInsensitive);
+            item->setHidden(!matches);
+        }
+        if (!list->currentItem() || list->currentItem()->isHidden()) {
+            for (int i = 0; i < list->count(); ++i) {
+                if (!list->item(i)->isHidden()) {
+                    list->setCurrentItem(list->item(i));
+                    break;
+                }
+            }
+        }
+    };
+    connect(search, &QLineEdit::textChanged, &dialog,
+            [applyFilter](const QString&) { applyFilter(); });
+    applyFilter();
+
+    bool groupRequested = false;
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    connect(groupButton, &QPushButton::clicked, &dialog, [&dialog, &groupRequested] {
+        groupRequested = true;
+        dialog.accept();
+    });
+    connect(list, &QListWidget::itemDoubleClicked, &dialog,
+            [&dialog](QListWidgetItem* item) {
+                if (item)
+                    dialog.accept();
+            });
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    if (groupRequested) {
+        createGroupChat();
+        return;
     }
 
-    if (peers.isEmpty()) {
-        auto* item = new QListWidgetItem(
-            QStringLiteral("Другие пользователи пока не найдены.\n"
-                           "Запустите Support IL на втором компьютере в этой же сети."));
-        item->setForeground(QColor(QStringLiteral("#64748b")));
-        item->setFlags(Qt::NoItemFlags);
-        m_peerList->addItem(item);
-    }
-}
-
-void MainWindow::startDirectChat()
-{
-    QListWidgetItem* item = m_peerList ? m_peerList->currentItem() : nullptr;
-    if (!item || item->data(Qt::UserRole).toString().isEmpty()) {
+    QListWidgetItem* item = list->currentItem();
+    if (!item || item->isHidden()) {
         QMessageBox::information(
             this, QStringLiteral("Новый чат"),
-            QStringLiteral("Выберите пользователя в списке «Пользователи»."));
+            QStringLiteral("Выберите пользователя слева или создайте группу."));
         return;
     }
 
     const QString peerId = item->data(Qt::UserRole).toString();
-    QString peerName;
-    for (const PeerInfo& peer : m_network.peers()) {
-        if (peer.id == peerId) {
-            peerName = peer.name;
-            break;
+    QString peerName = item->data(Qt::UserRole + 1).toString();
+    if (peerName.trimmed().isEmpty()) {
+        for (const PeerInfo& peer : m_network.peers()) {
+            if (peer.id == peerId) {
+                peerName = peer.name;
+                break;
+            }
         }
     }
-    if (peerName.trimmed().isEmpty())
-        peerName = item->data(Qt::UserRole + 1).toString();
 
     const QString id = m_rm.ensureDirectChat(peerId, peerName);
     if (id.isEmpty()) {
@@ -663,6 +674,8 @@ void MainWindow::startDirectChat()
     m_network.sendConversation(m_rm.exportConversation(id), targets);
 
     m_currentChatId = id;
+    m_pendingFiles.clear();
+    updatePendingFilesUi();
     refreshAllLists();
     statusBar()->showMessage(
         QStringLiteral("Чат с %1 готов.").arg(peerName.trimmed().isEmpty()
@@ -695,6 +708,8 @@ void MainWindow::createGroupChat()
         return peerLabel(a).toLower() < peerLabel(b).toLower();
     });
     for (const PeerInfo& peer : peers) {
+        if (peer.id == m_rm.selfId() || peer.id.isEmpty())
+            continue;
         auto* item = new QListWidgetItem(
             QStringLiteral("%1%2").arg(peerLabel(peer),
                                        peer.online ? QStringLiteral("  ●")
@@ -707,10 +722,10 @@ void MainWindow::createGroupChat()
     }
     layout->addWidget(list, 1);
 
-    if (peers.isEmpty()) {
+    if (list->count() == 0) {
         auto* empty = new QLabel(QStringLiteral(
-            "В сети пока нет других пользователей. Запустите приложение на "
-            "втором компьютере и обновите список."), &dialog);
+            "Другие пользователи пока не найдены. Запустите Support IL на "
+            "втором компьютере в этой же сети."), &dialog);
         empty->setWordWrap(true);
         empty->setObjectName(QStringLiteral("muted"));
         layout->addWidget(empty);
@@ -866,10 +881,40 @@ void MainWindow::addGroupMembers()
     statusBar()->showMessage(QStringLiteral("Участники добавлены в чат."), 4000);
 }
 
-void MainWindow::onPeerActivated(QListWidgetItem* item)
+void MainWindow::deleteCurrentChat()
 {
-    Q_UNUSED(item)
-    startDirectChat();
+    if (m_currentChatId.isEmpty())
+        return;
+
+    if (QMessageBox::question(
+            this, QStringLiteral("Удаление чата"),
+            QStringLiteral("Удалить чат «%1»?\n"
+                           "Чат и все сообщения исчезнут у всех участников.")
+                .arg(m_chatDetail ? m_chatDetail->text() : QString()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+        != QMessageBox::Yes) {
+        return;
+    }
+
+    const QString id = m_currentChatId;
+    QSet<QString> others = m_rm.participantIds(id);
+    others.remove(m_rm.selfId());
+
+    if (!m_rm.deleteConversation(id)) {
+        QMessageBox::warning(this, QStringLiteral("Удаление чата"),
+                             QStringLiteral("Не удалось удалить чат:\n%1")
+                                 .arg(m_rm.lastError()));
+        return;
+    }
+
+    if (!others.isEmpty())
+        m_network.sendDelete(id, others);
+
+    m_currentChatId.clear();
+    m_pendingFiles.clear();
+    updatePendingFilesUi();
+    refreshAllLists();
+    statusBar()->showMessage(QStringLiteral("Чат удалён."), 4000);
 }
 
 // =====================================================================
@@ -920,61 +965,11 @@ void MainWindow::sendMessage()
         m_network.sendMessage(message.id, payload, targets);
     }
 
-    const Report report = m_rm.loadOne(m_currentChatId);
-    if (m_chatModel->contains(report.id))
-        m_chatModel->updateFromReport(report);
-    else
-        refreshAllLists();
+    if (m_chatProxy)
+        m_chatProxy->sort(ReportModel::ColUpdated, Qt::DescendingOrder);
 
     displayActiveChat();
     updateTabsUnreadCount();
-}
-
-void MainWindow::archiveSelected()
-{
-    if (m_currentChatId.isEmpty())
-        return;
-
-    const QSet<QString> targets = m_rm.participantIds(m_currentChatId);
-    QSet<QString> others = targets;
-    others.remove(m_rm.selfId());
-
-    if (!m_rm.archiveConversation(m_currentChatId))
-        return;
-
-    if (!others.isEmpty())
-        m_network.sendArchive(m_currentChatId, others);
-
-    m_currentChatId.clear();
-    refreshAllLists();
-    statusBar()->showMessage(QStringLiteral("Чат перенесён в архив."), 4000);
-}
-
-void MainWindow::deleteSelectedArchive()
-{
-    if (m_currentArchiveId.isEmpty())
-        return;
-
-    if (QMessageBox::question(this, QStringLiteral("Удаление"),
-                              QStringLiteral("Удалить чат из архива?\n"
-                                             "Чат исчезнет у всех участников."))
-        != QMessageBox::Yes) {
-        return;
-    }
-
-    const QString id = m_currentArchiveId;
-    QSet<QString> others = m_rm.participantIds(id);
-    others.remove(m_rm.selfId());
-
-    if (!m_rm.deleteConversation(id))
-        return;
-
-    if (!others.isEmpty())
-        m_network.sendDelete(id, others);
-
-    m_currentArchiveId.clear();
-    refreshAllLists();
-    statusBar()->showMessage(QStringLiteral("Чат удалён."), 4000);
 }
 
 // =====================================================================
@@ -985,46 +980,40 @@ void MainWindow::refreshAllLists()
     syncPeerNames();
 
     m_chatModel->setSelfId(m_rm.selfId());
-    m_archiveModel->setSelfId(m_rm.selfId());
+    m_chatModel->setOnlineIds(onlinePeerIds());
 
     const QList<Report> all = m_rm.loadAll();
     QList<Report> active;
-    QList<Report> archived;
     active.reserve(all.size());
 
     for (const Report& r : all) {
         if (!r.isParticipant(m_rm.selfId()) && !r.participants.isEmpty())
             continue;
+        // Архив как отдельная вкладка удалён: архивные чаты в список не попадают.
         if (r.status == QLatin1String("resolved"))
-            archived << r;
-        else
-            active << r;
+            continue;
+        active << r;
     }
 
     {
         QSignalBlocker chatLock(m_chatTable->selectionModel());
-        QSignalBlocker archiveLock(m_archiveTable->selectionModel());
 
         m_chatModel->setReports(active);
-        m_archiveModel->setReports(archived);
         m_chatProxy->sort(ReportModel::ColUpdated, Qt::DescendingOrder);
-        m_archiveProxy->sort(ReportModel::ColUpdated, Qt::DescendingOrder);
 
         if (!m_currentChatId.isEmpty() && !m_chatModel->contains(m_currentChatId))
             m_currentChatId.clear();
-        if (!m_currentArchiveId.isEmpty()
-            && !m_archiveModel->contains(m_currentArchiveId)) {
-            m_currentArchiveId.clear();
-        }
 
         if (m_currentChatId.isEmpty() && m_chatModel->rowCount() > 0
             && m_tabs->currentWidget() == m_messengerTab) {
-            m_currentChatId = m_chatModel->at(0).id;
+            const QModelIndex first = m_chatProxy->index(0, ReportModel::ColTitle);
+            if (first.isValid()) {
+                const QModelIndex source = m_chatProxy->mapToSource(first);
+                m_currentChatId = m_chatModel->at(source.row()).id;
+            }
         }
 
         restoreSelection(m_chatTable, m_chatProxy, m_chatModel, m_currentChatId);
-        restoreSelection(m_archiveTable, m_archiveProxy, m_archiveModel,
-                         m_currentArchiveId);
     }
 
     if (m_currentChatId.isEmpty())
@@ -1032,12 +1021,6 @@ void MainWindow::refreshAllLists()
     else
         displayActiveChat();
 
-    if (m_currentArchiveId.isEmpty())
-        clearArchiveChat();
-    else
-        displayArchiveChat();
-
-    refreshPeerList();
     updateTabsUnreadCount();
     updateHeaderStatus();
     updateSettingsInfo();
@@ -1067,7 +1050,10 @@ void MainWindow::onActiveSelectionChanged()
 {
     const QModelIndex current = m_chatTable->currentIndex();
     if (!current.isValid()) {
-        clearActiveChat();
+        // Поиск может временно скрыть выбранный чат — не сбрасываем открытый
+        // диалог, иначе правая панель опустеет при вводе в строку поиска.
+        if (m_currentChatId.isEmpty())
+            clearActiveChat();
         return;
     }
 
@@ -1086,25 +1072,6 @@ void MainWindow::onActiveSelectionChanged()
     displayActiveChat();
 }
 
-void MainWindow::onArchiveSelectionChanged()
-{
-    const QModelIndex current = m_archiveTable->currentIndex();
-    if (!current.isValid()) {
-        clearArchiveChat();
-        return;
-    }
-
-    const QModelIndex source = m_archiveProxy->mapToSource(current);
-    const Report report = m_archiveModel->at(source.row());
-    if (report.id.isEmpty()) {
-        clearArchiveChat();
-        return;
-    }
-
-    m_currentArchiveId = report.id;
-    displayArchiveChat();
-}
-
 void MainWindow::displayActiveChat()
 {
     if (m_currentChatId.isEmpty()) {
@@ -1118,38 +1085,7 @@ void MainWindow::displayActiveChat()
         return;
     }
 
-    const bool direct = report.kind == QLatin1String("direct");
-    if (m_addMembersButton)
-        m_addMembersButton->setVisible(!direct);
-    QString meta;
-    if (direct) {
-        QString peerId;
-        for (const Participant& p : report.participants) {
-            if (p.id != m_rm.selfId()) {
-                peerId = p.id;
-                break;
-            }
-        }
-        bool online = false;
-        for (const PeerInfo& peer : m_network.peers()) {
-            if (peer.id == peerId) {
-                online = peer.online;
-                break;
-            }
-        }
-        meta = online ? QStringLiteral("● в сети") : QStringLiteral("○ не в сети");
-    } else {
-        const QString summary = report.participantSummary(m_rm.selfId());
-        meta = summary.isEmpty() ? QStringLiteral("Групповой чат")
-                                 : QStringLiteral("Участники: %1").arg(summary);
-    }
-
-    m_chatDetail->setText(
-        QStringLiteral("<b>%1</b><br><span style='color:#64748b;'>%2 · %3</span>")
-            .arg(report.displayTitle(m_rm.selfId()).toHtmlEscaped(),
-                 (direct ? QStringLiteral("Личный чат") : QStringLiteral("Групповой чат")),
-                 meta.toHtmlEscaped()));
-
+    updateChatHeader(report);
     renderAttachments(m_chatAttachLayout, report, report.attachments, false);
     rebuildChat(m_chatLayout, m_chatScroll, report, false);
 
@@ -1164,57 +1100,81 @@ void MainWindow::displayActiveChat()
     updateTabsUnreadCount();
 }
 
-void MainWindow::displayArchiveChat()
+void MainWindow::updateChatHeader(const Report& report)
 {
-    if (m_currentArchiveId.isEmpty()) {
-        clearArchiveChat();
+    if (!m_chatDetail || !m_chatStatusLabel)
         return;
+
+    const bool direct = report.kind == QLatin1String("direct");
+    const QString name = report.displayTitle(m_rm.selfId()).isEmpty()
+                             ? QStringLiteral("Чат")
+                             : report.displayTitle(m_rm.selfId());
+    m_chatDetail->setText(name);
+
+    if (direct) {
+        QString peerId;
+        for (const Participant& p : report.participants) {
+            if (p.id != m_rm.selfId()) {
+                peerId = p.id;
+                break;
+            }
+        }
+        bool online = false;
+        for (const PeerInfo& peer : m_network.peers()) {
+            if (!peerId.isEmpty() && peer.id == peerId) {
+                online = peer.online;
+                break;
+            }
+        }
+        if (online) {
+            m_chatStatusLabel->setText(
+                QStringLiteral("<span style='color:#31a24c;'>● онлайн</span>"));
+        } else {
+            QString lastSeen;
+            if (report.lastActivityTs > 0) {
+                const QDateTime dt = QDateTime::fromMSecsSinceEpoch(report.lastActivityTs);
+                if (dt.date() == QDate::currentDate())
+                    lastSeen = dt.toString(QStringLiteral("HH:mm"));
+                else
+                    lastSeen = dt.toString(QStringLiteral("dd.MM HH:mm"));
+            }
+            m_chatStatusLabel->setText(
+                lastSeen.isEmpty()
+                    ? QStringLiteral("<span style='color:#9aa0a6;'>○ не в сети</span>")
+                    : QStringLiteral("<span style='color:#9aa0a6;'>○ был(а) в %1</span>")
+                          .arg(lastSeen.toHtmlEscaped()));
+        }
+    } else {
+        m_chatStatusLabel->setText(
+            QStringLiteral("<span style='color:#64748b;'>👥 %1 участник(ов)</span>")
+                .arg(report.participants.size()));
     }
 
-    const Report report = m_rm.loadOne(m_currentArchiveId);
-    if (report.id.isEmpty()) {
-        clearArchiveChat();
-        return;
-    }
-
-    m_archiveDetail->setText(
-        QStringLiteral("<b>%1</b><br><span style='color:#64748b;'>%2 · архив</span>")
-            .arg(report.displayTitle(m_rm.selfId()).toHtmlEscaped(),
-                 report.participantSummary(m_rm.selfId()).toHtmlEscaped()));
-
-    renderAttachments(m_archiveAttachLayout, report, report.attachments, true);
-    rebuildChat(m_archiveLayout, m_archiveScroll, report, true);
-    updateArchiveActions();
+    if (m_addMembersButton)
+        m_addMembersButton->setVisible(!direct);
+    if (m_deleteChatButton)
+        m_deleteChatButton->setVisible(true);
 }
 
 void MainWindow::clearActiveChat()
 {
     m_currentChatId.clear();
-    if (m_chatDetail)
-        m_chatDetail->setText(QStringLiteral("Выберите чат слева или начните переписку."));
+    if (m_chatDetail) {
+        m_chatDetail->setText(QStringLiteral("Выберите чат слева или начните новый"));
+    }
+    if (m_chatStatusLabel)
+        m_chatStatusLabel->clear();
     if (m_chatAttachWidget)
         m_chatAttachWidget->setVisible(false);
     if (m_addMembersButton)
         m_addMembersButton->setVisible(false);
+    if (m_deleteChatButton)
+        m_deleteChatButton->setVisible(false);
     if (m_chatLayout) {
         clearChatLayout(m_chatLayout);
-        showChatPlaceholder(m_chatLayout, QStringLiteral("Сообщений пока нет."));
+        showChatPlaceholder(m_chatLayout, QStringLiteral("Выберите чат слева или начните новый"));
     }
     updateActiveActions();
-}
-
-void MainWindow::clearArchiveChat()
-{
-    m_currentArchiveId.clear();
-    if (m_archiveDetail)
-        m_archiveDetail->setText(QStringLiteral("Выберите чат в архиве."));
-    if (m_archiveAttachWidget)
-        m_archiveAttachWidget->setVisible(false);
-    if (m_archiveLayout) {
-        clearChatLayout(m_archiveLayout);
-        showChatPlaceholder(m_archiveLayout, QStringLiteral("Сообщений нет."));
-    }
-    updateArchiveActions();
 }
 
 void MainWindow::clearChatLayout(QVBoxLayout* layout)
@@ -1263,6 +1223,7 @@ void MainWindow::appendChatBubble(QVBoxLayout* chatLayout, QScrollArea* scroll,
         return;
 
     const bool own = !message.senderId.isEmpty() && message.senderId == m_rm.selfId();
+    const bool group = report.kind == QLatin1String("group");
 
     auto* row = new QWidget;
     auto* rowLayout = new QHBoxLayout(row);
@@ -1273,16 +1234,19 @@ void MainWindow::appendChatBubble(QVBoxLayout* chatLayout, QScrollArea* scroll,
     bubble->setObjectName(own ? QStringLiteral("bubbleOwn") : QStringLiteral("bubbleOther"));
     bubble->setMaximumWidth(640);
     auto* bubbleLayout = new QVBoxLayout(bubble);
-    bubbleLayout->setContentsMargins(10, 8, 10, 8);
+    bubbleLayout->setContentsMargins(10, 8, 10, 6);
     bubbleLayout->setSpacing(4);
 
-    const QString sender = message.senderName.trimmed().isEmpty()
-                               ? message.senderId.left(8)
-                               : message.senderName;
-    auto* meta = new QLabel(QStringLiteral("<b>%1</b> <span style='color:#64748b;'>%2</span>")
-                                .arg(sender.toHtmlEscaped(), message.ts.toHtmlEscaped()));
-    meta->setTextFormat(Qt::RichText);
-    bubbleLayout->addWidget(meta);
+    if (!own && group) {
+        const QString sender = message.senderName.trimmed().isEmpty()
+                                   ? message.senderId.left(8)
+                                   : message.senderName.trimmed();
+        auto* senderLabel = new QLabel(
+            QStringLiteral("<span style='color:#1d4ed8;'><b>%1</b></span>")
+                .arg(sender.toHtmlEscaped()));
+        senderLabel->setTextFormat(Qt::RichText);
+        bubbleLayout->addWidget(senderLabel);
+    }
 
     if (!message.text.trimmed().isEmpty()) {
         auto* textLabel = new QLabel(message.text.toHtmlEscaped());
@@ -1301,6 +1265,11 @@ void MainWindow::appendChatBubble(QVBoxLayout* chatLayout, QScrollArea* scroll,
         bubbleLayout->addWidget(attachRow);
     }
 
+    auto* timeLabel = new QLabel(messageTimeText(message.timestamp, message.ts));
+    timeLabel->setObjectName(QStringLiteral("bubbleTime"));
+    timeLabel->setAlignment(Qt::AlignRight);
+    bubbleLayout->addWidget(timeLabel);
+
     if (own)
         rowLayout->addStretch(1);
     rowLayout->addWidget(bubble, 0);
@@ -1308,6 +1277,15 @@ void MainWindow::appendChatBubble(QVBoxLayout* chatLayout, QScrollArea* scroll,
         rowLayout->addStretch(1);
 
     chatLayout->addWidget(row);
+}
+
+QString MainWindow::messageTimeText(qint64 timestamp, const QString& fallback)
+{
+    if (timestamp > 0)
+        return QDateTime::fromMSecsSinceEpoch(timestamp).toString(QStringLiteral("HH:mm"));
+    if (!fallback.trimmed().isEmpty())
+        return fallback.trimmed();
+    return QString();
 }
 
 void MainWindow::scrollChatToBottom(QScrollArea* scroll)
@@ -1466,9 +1444,8 @@ void MainWindow::updateSettingsInfo()
         m_devicesDbPathEdit->setText(SettingsManager::instance().devicesDbPath());
     if (m_settingsStatsLabel) {
         m_settingsStatsLabel->setText(
-            QStringLiteral("Активных чатов: %1 · В архиве: %2 · Новых сообщений: %3")
-                .arg(m_rm.totalCount() - m_rm.resolvedCount())
-                .arg(m_rm.resolvedCount())
+            QStringLiteral("Чатов: %1 · Новых сообщений: %2")
+                .arg(m_rm.totalCount())
                 .arg(m_rm.unreadIncomingCount()));
     }
 
@@ -1524,14 +1501,8 @@ void MainWindow::updateActiveActions()
         m_attachButton->setEnabled(hasChat);
     if (m_clearFilesButton)
         m_clearFilesButton->setEnabled(hasChat);
-    if (m_archiveButton)
-        m_archiveButton->setEnabled(hasChat);
-}
-
-void MainWindow::updateArchiveActions()
-{
-    if (m_archiveDeleteButton)
-        m_archiveDeleteButton->setEnabled(!m_currentArchiveId.isEmpty());
+    if (m_deleteChatButton)
+        m_deleteChatButton->setVisible(hasChat);
 }
 
 void MainWindow::syncPeerNames()
@@ -1541,6 +1512,16 @@ void MainWindow::syncPeerNames()
             continue;
         m_rm.updateParticipantName(peer.id, peer.name);
     }
+}
+
+QSet<QString> MainWindow::onlinePeerIds() const
+{
+    QSet<QString> ids;
+    for (const PeerInfo& peer : m_network.peers()) {
+        if (peer.online && !peer.id.isEmpty())
+            ids.insert(peer.id);
+    }
+    return ids;
 }
 
 // =====================================================================
@@ -1561,7 +1542,8 @@ void MainWindow::saveSettings()
     if (oldPath != settings.reportsPath()) {
         m_rm.setBasePath(settings.reportsPath());
         m_currentChatId.clear();
-        m_currentArchiveId.clear();
+        m_pendingFiles.clear();
+        updatePendingFilesUi();
         m_lastRevision = -1;
     }
 
@@ -1591,13 +1573,17 @@ void MainWindow::onRosterChanged()
 {
     const qint64 before = m_rm.revision();
     syncPeerNames();
-    if (m_rm.revision() != before)
+    if (m_rm.revision() != before) {
         refreshAllLists();
-    else {
-        refreshPeerList();
-        updateHeaderStatus();
-        if (!m_currentChatId.isEmpty())
-            displayActiveChat();
+        return;
+    }
+
+    m_chatModel->setOnlineIds(onlinePeerIds());
+    updateHeaderStatus();
+    if (!m_currentChatId.isEmpty()) {
+        const Report report = m_rm.loadOne(m_currentChatId);
+        if (!report.id.isEmpty())
+            updateChatHeader(report);
     }
 }
 
@@ -1646,8 +1632,6 @@ void MainWindow::onRemoteDelete(const QString& id)
     if (id.isEmpty())
         return;
     m_rm.deleteConversation(id);
-    if (m_currentArchiveId == id)
-        m_currentArchiveId.clear();
     if (m_currentChatId == id)
         m_currentChatId.clear();
     refreshAllLists();

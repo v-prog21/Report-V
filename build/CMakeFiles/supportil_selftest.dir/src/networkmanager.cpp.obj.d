@@ -419,6 +419,8 @@ CMakeFiles/supportil_selftest.dir/src/networkmanager.cpp.obj: \
  C:/Qt/6.7.2/mingw_64/include/QtCore/qjsondocument.h \
  C:/Qt/6.7.2/mingw_64/include/QtNetwork/QNetworkInterface \
  C:/Qt/6.7.2/mingw_64/include/QtNetwork/qnetworkinterface.h \
+ C:/Qt/6.7.2/mingw_64/include/QtCore/QPointer \
+ C:/Qt/6.7.2/mingw_64/include/QtCore/qpointer.h \
  C:/Qt/6.7.2/mingw_64/include/QtCore/QStandardPaths \
  C:/Qt/6.7.2/mingw_64/include/QtCore/qstandardpaths.h \
  C:/Qt/6.7.2/mingw_64/include/QtNetwork/QTcpServer \

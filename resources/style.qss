@@ -407,6 +407,101 @@ QFrame#hline {
     min-height: 1px;
 }
 
+/* --------------------- Мессенджер (Telegram-style) ------------------- */
+QWidget#chatListPanel {
+    background-color: #ffffff;
+}
+
+QWidget#chatListTop {
+    background-color: #ffffff;
+    border-bottom: 1px solid #eef2f8;
+}
+
+QLineEdit#chatSearch {
+    background-color: #f4f6fa;
+    border: 1px solid #e8edf5;
+    border-radius: 8px;
+    padding: 7px 11px;
+}
+
+QLineEdit#chatSearch:focus {
+    background-color: #ffffff;
+    border: 1px solid #2563eb;
+}
+
+QPushButton#btnNewChat {
+    background-color: #2f80ed;
+    border: 1px solid #2f80ed;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 9pt;
+}
+
+QPushButton#btnNewChat:hover {
+    background-color: #1d6fd6;
+    border-color: #1d6fd6;
+}
+
+QTableView#chatList {
+    background-color: #ffffff;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    selection-background-color: transparent;
+}
+
+QTableView#chatList::item {
+    padding: 0;
+    border: none;
+}
+
+QTableView#chatList::item:selected,
+QTableView#chatList::item:hover {
+    background-color: transparent;
+    color: inherit;
+}
+
+QWidget#chatPanel {
+    background-color: #f8fafc;
+}
+
+QWidget#chatHeader {
+    background-color: #ffffff;
+}
+
+QLabel#chatHeaderTitle {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+QLabel#chatHeaderStatus {
+    font-size: 9pt;
+    color: #64748b;
+}
+
+QLabel#bubbleTime {
+    color: #94a3b8;
+    font-size: 8pt;
+}
+
+QPushButton#btnGhostDanger {
+    background-color: transparent;
+    color: #b91c1c;
+    border: 1px solid transparent;
+    padding: 5px 10px;
+}
+
+QPushButton#btnGhostDanger:hover {
+    background-color: #fdeaea;
+    border-color: #f5c6c6;
+}
+
+QSplitter#chatSplitter::handle:horizontal {
+    width: 1px;
+    background-color: #e2e8f0;
+}
+
 /* ------------------------------ Списки ------------------------------ */
 QListWidget#linkList {
     background-color: #ffffff;

@@ -107,6 +107,16 @@ FgisSearchDialog::FgisSearchDialog(QWidget* parent)
     });
 }
 
+FgisSearchDialog::~FgisSearchDialog()
+{
+    // Не оставляем висящий сетевой запрос при закрытии диалога.
+    if (m_reply) {
+        m_reply->abort();
+        m_reply->deleteLater();
+        m_reply = nullptr;
+    }
+}
+
 void FgisSearchDialog::setInitialQuery(const QString& text)
 {
     m_queryEdit->setText(text.trimmed());

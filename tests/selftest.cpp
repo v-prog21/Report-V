@@ -147,6 +147,51 @@ void testStorage()
               QStringLiteral("у вложения указан владелец"));
     }
 
+    // Враждебное имя вложения не должно выходить из папки вложений.
+    QJsonObject malicious;
+    malicious.insert(QStringLiteral("id"), QStringLiteral("d-malicious"));
+    malicious.insert(QStringLiteral("title"), QStringLiteral("Злой чат"));
+    malicious.insert(QStringLiteral("kind"), QStringLiteral("group"));
+    QJsonArray maliciousParticipants;
+    maliciousParticipants.append(QJsonObject{{QStringLiteral("id"), QStringLiteral("id-a")},
+                                             {QStringLiteral("name"), QStringLiteral("Алиса")}});
+    maliciousParticipants.append(QJsonObject{{QStringLiteral("id"), QStringLiteral("id-z")},
+                                             {QStringLiteral("name"), QStringLiteral("Зоя")}});
+    malicious.insert(QStringLiteral("participants"), maliciousParticipants);
+    QJsonArray maliciousMessages;
+    QJsonObject maliciousMessage;
+    maliciousMessage.insert(QStringLiteral("id"), QStringLiteral("m-malicious"));
+    maliciousMessage.insert(QStringLiteral("senderId"), QStringLiteral("id-z"));
+    maliciousMessage.insert(QStringLiteral("senderName"), QStringLiteral("Зоя"));
+    maliciousMessage.insert(QStringLiteral("text"), QStringLiteral("файл"));
+    maliciousMessage.insert(QStringLiteral("timestamp"),
+                            QDateTime::currentMSecsSinceEpoch());
+    QJsonArray maliciousAttachments;
+    maliciousAttachments.append(QJsonObject{
+        {QStringLiteral("filename"), QStringLiteral("../../escape.txt")},
+        {QStringLiteral("displayName"), QStringLiteral("escape.txt")},
+        {QStringLiteral("size"), 10}});
+    maliciousAttachments.append(QJsonObject{
+        {QStringLiteral("filename"), QStringLiteral("..")},
+        {QStringLiteral("displayName"), QStringLiteral("..")},
+        {QStringLiteral("size"), 10}});
+    maliciousMessage.insert(QStringLiteral("attachments"), maliciousAttachments);
+    maliciousMessages.append(maliciousMessage);
+    malicious.insert(QStringLiteral("messages"), maliciousMessages);
+    bool maliciousNew = false;
+    check(reports.importConversation(malicious, maliciousNew),
+          QStringLiteral("чат с враждебным именем файла принят"));
+    const Report maliciousChat = reports.loadOne(QStringLiteral("d-malicious"));
+    check(maliciousChat.messages.size() == 1
+              && maliciousChat.messages.first().attachments.size() == 1,
+          QStringLiteral("небезопасное имя вложения отброшено"));
+    if (!maliciousChat.messages.isEmpty()
+        && !maliciousChat.messages.first().attachments.isEmpty()) {
+        const QString file = maliciousChat.messages.first().attachments.first().filename;
+        check(file == QStringLiteral("escape.txt"),
+              QStringLiteral("путь вложения очищен от перехода по каталогам"));
+    }
+
     chat = reports.loadOne(direct);
     check(chat.unreadIncomingCount(QStringLiteral("id-b")) == 0,
           QStringLiteral("своё сообщение не считается непрочитанным"));

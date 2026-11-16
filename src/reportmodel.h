@@ -3,6 +3,7 @@
 #include <QAbstractTableModel>
 #include <QHash>
 #include <QList>
+#include <QSet>
 #include <QStyledItemDelegate>
 
 #include "reportmanager.h"
@@ -25,13 +26,18 @@ public:
         FilterRole,
         StatusRole,
         ReportIdRole,
-        UnreadRole
+        UnreadRole,
+        LastMessageRole,
+        KindRole,
+        OnlineRole,
+        ActivityTextRole
     };
 
     explicit ReportModel(QObject* parent = nullptr);
 
     void setReports(const QList<Report>& reports);
     void setSelfId(const QString& selfId);
+    void setOnlineIds(const QSet<QString>& ids);
     void clear();
     Report at(int row) const;
     bool contains(const QString& reportId) const;
@@ -46,16 +52,20 @@ public:
 
 private:
     int unreadCount(const Report& report) const;
+    QString previewText(const Report& report) const;
     static QString activityText(const Report& report);
 
     QList<Report> m_reports;
+    QSet<QString> m_onlineIds;
     QString m_selfId;
 };
 
-class ReportStatusDelegate : public QStyledItemDelegate {
+/// Делегат двухстрочного списка диалогов в стиле Telegram Desktop:
+/// имя + время, ниже последнее сообщение + бейдж непрочитанных.
+class ChatListDelegate : public QStyledItemDelegate {
     Q_OBJECT
 public:
-    explicit ReportStatusDelegate(QObject* parent = nullptr);
+    explicit ChatListDelegate(QObject* parent = nullptr);
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option,
                const QModelIndex& index) const override;

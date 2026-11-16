@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkInterface>
+#include <QPointer>
 #include <QStandardPaths>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -32,7 +33,39 @@ constexpr auto kMulticastGroup = "239.255.77.77";
 
 QString sanitizeFileName(const QString& name)
 {
-    return QFileInfo(name).fileName();
+    // Оставляем только последний компонент пути, причём учитываем оба
+    // вида разделителей: имя приходит по сети и может быть враждебным.
+    QString base = name;
+    int slash = base.lastIndexOf(QLatin1Char('/'));
+    const int backslash = base.lastIndexOf(QLatin1Char('\\'));
+    if (backslash > slash)
+        slash = backslash;
+    if (slash >= 0)
+        base = base.mid(slash + 1);
+    base = base.trimmed();
+
+    // Защита от выхода из каталога вложений: "." и ".." недопустимы.
+    if (base == QLatin1String(".") || base == QLatin1String("..")) {
+        base.clear();
+        return base;
+    }
+
+    // Убираем символы, недопустимые в именах файлов Windows, и управляющие
+    // символы. Имя в хранилище всегда должно быть безопасным.
+    static const QString invalid = QStringLiteral("<>:\"/\\|?*");
+    for (QChar& ch : base) {
+        if (ch.unicode() < 0x20 || invalid.contains(ch))
+            ch = QLatin1Char('_');
+    }
+
+    // Windows не поддерживает имена, заканчивающиеся точкой или пробелом.
+    while (base.endsWith(QLatin1Char('.')) || base.endsWith(QLatin1Char(' ')))
+        base.chop(1);
+
+    if (base.size() > 180)
+        base = base.left(180);
+
+    return base;
 }
 
 class FileSender : public QObject {
@@ -55,12 +88,23 @@ public:
     }
 
 private:
+    void fail()
+    {
+        m_file.close();
+        if (m_socket)
+            m_socket->abort();
+    }
+
     void pump()
     {
+        if (m_pumping)
+            return;
         if (!m_socket || m_socket->state() == QAbstractSocket::UnconnectedState)
             return;
         if (!m_file.isOpen())
             return;
+
+        m_pumping = true;
 
         // Держим в буфере сокета не больше ~512 КБ, чтобы не блокировать
         // интерфейс и не съедать память на больших файлах.
@@ -68,16 +112,39 @@ private:
             const QByteArray chunk = m_file.read(64 * 1024);
             if (chunk.isEmpty())
                 break;
-            m_socket->write(chunk);
+
+            const qint64 written = m_socket->write(chunk);
+            if (written < 0) {
+                // Сокет больше не принимает данные: передачу прекращаем,
+                // иначе клиент будет вечно ждать недостающие байты.
+                fail();
+                m_pumping = false;
+                return;
+            }
+            if (written < chunk.size()) {
+                // Часть блока не поместилась в буфер — вернём указатель,
+                // чтобы дослать эти байты при следующем bytesWritten.
+                const qint64 back = chunk.size() - written;
+                if (!m_file.seek(m_file.pos() - back)) {
+                    fail();
+                    m_pumping = false;
+                    return;
+                }
+                break;
+            }
         }
         m_socket->flush();
 
-        if (m_file.atEnd() && m_socket->bytesToWrite() == 0)
+        const bool done = m_file.atEnd() && m_socket->bytesToWrite() == 0;
+        m_pumping = false;
+
+        if (done)
             m_socket->disconnectFromHost();
     }
 
     QTcpSocket* m_socket = nullptr;
     QFile m_file;
+    bool m_pumping = false;
 };
 
 } // namespace
@@ -157,6 +224,9 @@ bool NetworkManager::start()
     }
     m_listenPort = usedPort;
 
+    // Если подписка не удастся, порт не должен остаться «старым»:
+    // иначе рассылка presence уйдёт в никуда после перезапуска.
+    m_discoveryPort = 0;
     if (!bindDiscovery(m_discoveryPort)) {
         emit statusMessage(
             QStringLiteral("Не удалось подписаться на сетевые объявления. "
@@ -549,26 +619,36 @@ void NetworkManager::retryPending()
     if (m_pending.isEmpty())
         return;
 
-    for (auto it = m_pending.begin(); it != m_pending.end();) {
-        PendingMessage& pending = it.value();
+    // Копируем очередь перед обходом: deliverToPeer может синхронно
+    // получить ответ/ошибку и изменить m_pending. Итерация по контейнеру,
+    // который меняется изнутри, — неопределённое поведение.
+    QList<QPair<QString, PendingMessage>> jobs;
+    jobs.reserve(m_pending.size());
+    for (auto it = m_pending.cbegin(); it != m_pending.cend(); ++it)
+        jobs.append(qMakePair(it.key(), it.value()));
 
-        for (auto targetIt = pending.targets.begin(); targetIt != pending.targets.end();) {
-            const QString target = *targetIt;
+    for (const auto& job : jobs) {
+        if (!m_pending.contains(job.first))
+            continue;
+
+        for (const QString& target : job.second.targets) {
+            // Предыдущая доставка могла завершить сообщение полностью.
+            if (!m_pending.contains(job.first))
+                break;
+
             const auto peerIt = m_peers.constFind(target);
             if (peerIt == m_peers.cend()) {
                 // Участник неизвестен: ждём его появления в сети.
-                ++targetIt;
                 continue;
             }
             if (peerIt->online && peerIt->port > 0)
-                deliverToPeer(*peerIt, pending.payload, it.key(), true);
-            ++targetIt;
+                deliverToPeer(*peerIt, job.second.payload, job.first, true);
         }
 
-        if (pending.targets.isEmpty())
-            it = m_pending.erase(it);
-        else
-            ++it;
+        // Если все адресаты подтвердили получение, запись уже удалена.
+        const auto pendingIt = m_pending.find(job.first);
+        if (pendingIt != m_pending.end() && pendingIt->targets.isEmpty())
+            m_pending.erase(pendingIt);
     }
 }
 
@@ -586,14 +666,39 @@ void NetworkManager::deliverToPeer(const PeerInfo& peer, const QJsonObject& payl
 
     auto* socket = new QTcpSocket(this);
     auto buffer = std::make_shared<QByteArray>();
+    auto done = std::make_shared<bool>(false);
+    QPointer<QTcpSocket> guard(socket);
+
+    // Единая точка завершения: ack, ошибка и тайм-аут не должны
+    // обрабатывать один и тот же сокет повторно (в т.ч. deleteLater).
+    const auto finish = [this, guard, buffer, flightKey, done](bool abortNow) {
+        if (*done)
+            return;
+        *done = true;
+        buffer->clear();
+        m_inFlight.remove(flightKey);
+        if (!guard)
+            return;
+        if (abortNow)
+            guard->abort();
+        else
+            guard->disconnectFromHost();
+        guard->deleteLater();
+    };
 
     connect(socket, &QTcpSocket::connected, socket, [socket, payload] {
-        socket->write(jsonLine(payload));
-        socket->flush();
+        if (socket->write(jsonLine(payload)) < 0)
+            socket->abort();
+        else
+            socket->flush();
     });
 
     connect(socket, &QTcpSocket::readyRead, socket,
-            [this, socket, buffer, messageId, trackDelivery, peerKey = peer.id, flightKey] {
+            [this, socket, buffer, messageId, trackDelivery, peerKey = peer.id,
+             finish, done] {
+        if (*done)
+            return;
+
         buffer->append(socket->readAll());
         const int newline = buffer->indexOf('\n');
         if (newline < 0)
@@ -615,26 +720,14 @@ void NetworkManager::deliverToPeer(const PeerInfo& peer, const QJsonObject& payl
                         m_pending.erase(pendingIt);
                 }
             }
-            m_inFlight.remove(flightKey);
-            socket->disconnectFromHost();
-            socket->deleteLater();
+            finish(false);
         }
     });
 
     connect(socket, &QAbstractSocket::errorOccurred, socket,
-            [this, socket, buffer, flightKey] {
-        buffer->clear();
-        m_inFlight.remove(flightKey);
-        socket->abort();
-        socket->deleteLater();
-    });
+            [finish] { finish(true); });
 
-    QTimer::singleShot(8000, socket, [this, socket, buffer, flightKey] {
-        buffer->clear();
-        m_inFlight.remove(flightKey);
-        socket->abort();
-        socket->deleteLater();
-    });
+    QTimer::singleShot(8000, this, [finish] { finish(true); });
 
     socket->connectToHost(QHostAddress(peer.address), peer.port);
 }
@@ -648,16 +741,43 @@ void NetworkManager::requestHistory(const PeerInfo& peer)
 
     auto* socket = new QTcpSocket(this);
     auto buffer = std::make_shared<QByteArray>();
+    auto done = std::make_shared<bool>(false);
+    QPointer<QTcpSocket> guard(socket);
 
-    connect(socket, &QTcpSocket::connected, socket, [this, socket] {
+    const auto finish = [this, guard, buffer, peerId, done](bool abortNow) {
+        if (*done)
+            return;
+        *done = true;
+        buffer->clear();
+        // Снимаем отметку при любом завершении, чтобы историю можно было
+        // запросить повторно (например, после долгого отсутствия в сети).
+        m_syncRequested.remove(peerId);
+        if (!guard)
+            return;
+        if (abortNow)
+            guard->abort();
+        else
+            guard->disconnectFromHost();
+        guard->deleteLater();
+    };
+
+    connect(socket, &QTcpSocket::connected, socket, [this, socket, done] {
+        if (*done)
+            return;
         QJsonObject request;
         request.insert(QStringLiteral("type"), QStringLiteral("sync_req"));
         request.insert(QStringLiteral("requester"), m_selfId);
-        socket->write(jsonLine(request));
+        if (socket->write(jsonLine(request)) < 0) {
+            socket->abort();
+            return;
+        }
         socket->flush();
     });
 
-    connect(socket, &QTcpSocket::readyRead, socket, [this, socket, buffer] {
+    connect(socket, &QTcpSocket::readyRead, socket, [this, socket, buffer, finish, done] {
+        if (*done)
+            return;
+
         buffer->append(socket->readAll());
         const int newline = buffer->indexOf('\n');
         if (newline < 0)
@@ -666,32 +786,24 @@ void NetworkManager::requestHistory(const PeerInfo& peer)
         const QByteArray line = buffer->left(newline);
         QJsonParseError error{};
         const QJsonDocument doc = QJsonDocument::fromJson(line, &error);
-        if (error.error != QJsonParseError::NoError || !doc.isObject())
+        if (error.error != QJsonParseError::NoError || !doc.isObject()) {
+            finish(true);
             return;
+        }
 
         const QJsonObject object = doc.object();
         if (object.value(QStringLiteral("type")).toString() == QLatin1String("history"))
             emit historyReceived(object.value(QStringLiteral("items")).toArray());
 
-        socket->disconnectFromHost();
-        socket->deleteLater();
+        // Успешный ответ: снимаем m_syncRequested, чтобы следующая
+        // синхронизация (например, после переподключения) сработала снова.
+        finish(false);
     });
 
     connect(socket, &QAbstractSocket::errorOccurred, socket,
-            [this, socket, buffer, peerId] {
-        // Повторим запрос истории при следующем появлении/опросе.
-        m_syncRequested.remove(peerId);
-        buffer->clear();
-        socket->abort();
-        socket->deleteLater();
-    });
+            [finish] { finish(true); });
 
-    QTimer::singleShot(15000, socket, [this, socket, buffer, peerId] {
-        m_syncRequested.remove(peerId);
-        buffer->clear();
-        socket->abort();
-        socket->deleteLater();
-    });
+    QTimer::singleShot(15000, this, [finish] { finish(true); });
 
     socket->connectToHost(QHostAddress(peer.address), peer.port);
 }
@@ -852,8 +964,9 @@ void NetworkManager::downloadFromPeer(const PeerInfo& owner, const QString& file
     state->file.setFileName(destination + QStringLiteral(".part"));
 
     auto* socket = new QTcpSocket(this);
+    QPointer<QTcpSocket> guard(socket);
 
-    const auto finish = [this, socket, state, safeName, destination](bool ok,
+    const auto finish = [this, guard, state, safeName, destination](bool ok,
                                                                     const QString& error) {
         if (state->finished)
             return;
@@ -871,8 +984,10 @@ void NetworkManager::downloadFromPeer(const PeerInfo& owner, const QString& file
             else {
                 emit downloadFinished(safeName, QString(), false,
                                       QStringLiteral("Не удалось сохранить файл."));
-                socket->abort();
-                socket->deleteLater();
+                if (guard) {
+                    guard->abort();
+                    guard->deleteLater();
+                }
                 return;
             }
         } else {
@@ -887,16 +1002,20 @@ void NetworkManager::downloadFromPeer(const PeerInfo& owner, const QString& file
                                   error.isEmpty() ? QStringLiteral("Загрузка прервана.")
                                                   : error);
 
-        socket->abort();
-        socket->deleteLater();
+        if (guard) {
+            guard->abort();
+            guard->deleteLater();
+        }
     };
 
     connect(socket, &QTcpSocket::connected, socket, [socket, safeName] {
         QJsonObject request;
         request.insert(QStringLiteral("type"), QStringLiteral("file_req"));
         request.insert(QStringLiteral("name"), safeName);
-        socket->write(jsonLine(request));
-        socket->flush();
+        if (socket->write(jsonLine(request)) < 0)
+            socket->abort();
+        else
+            socket->flush();
     });
 
     connect(socket, &QTcpSocket::readyRead, socket,
@@ -968,9 +1087,11 @@ void NetworkManager::downloadFromPeer(const PeerInfo& owner, const QString& file
             finish(false, QStringLiteral("Соединение прервано."));
     });
 
-    QTimer::singleShot(300000, socket, [socket, state, finish] {
-        if (socket->state() != QAbstractSocket::UnconnectedState && !state->finished)
+    QTimer::singleShot(300000, this, [guard, state, finish] {
+        if (guard && guard->state() != QAbstractSocket::UnconnectedState
+            && !state->finished) {
             finish(false, QStringLiteral("Превышено время ожидания загрузки."));
+        }
     });
 
     socket->connectToHost(QHostAddress(owner.address), owner.port);

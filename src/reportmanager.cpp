@@ -54,7 +54,47 @@ QString makeMessageId()
 
 QString sanitizeFileName(const QString& name)
 {
-    return QFileInfo(name).fileName();
+    // Имя может прийти из сети, поэтому оставляем только последний
+    // компонент пути и учитываем оба вида разделителей.
+    QString base = name;
+    int slash = base.lastIndexOf(QLatin1Char('/'));
+    const int backslash = base.lastIndexOf(QLatin1Char('\\'));
+    if (backslash > slash)
+        slash = backslash;
+    if (slash >= 0)
+        base = base.mid(slash + 1);
+    base = base.trimmed();
+
+    // Защита от выхода из каталога вложений: "." и ".." недопустимы.
+    if (base == QLatin1String(".") || base == QLatin1String("..")) {
+        base.clear();
+        return base;
+    }
+
+    static const QString invalid = QStringLiteral("<>:\"/\\|?*");
+    for (QChar& ch : base) {
+        if (ch.unicode() < 0x20 || invalid.contains(ch))
+            ch = QLatin1Char('_');
+    }
+
+    // Windows не поддерживает имена, заканчивающиеся точкой или пробелом.
+    while (base.endsWith(QLatin1Char('.')) || base.endsWith(QLatin1Char(' ')))
+        base.chop(1);
+
+    if (base.size() > 180)
+        base = base.left(180);
+
+    return base;
+}
+
+// QJsonValue::toString() для отсутствующего ключа возвращает null-QString.
+// При вставке в SQLite это NULL и нарушение NOT NULL, поэтому пустые
+// строки из сети всегда приводим к «настоящей» пустой строке.
+QString jsonString(const QJsonObject& object, const QString& key,
+                   const QString& fallback = QString())
+{
+    const QString value = object.value(key).toString(fallback);
+    return value.isNull() ? QStringLiteral("") : value;
 }
 
 } // namespace
@@ -122,17 +162,32 @@ int Report::unreadIncomingCount(const QString& id) const
 QList<Participant> ReportManager::participantsFromJson(const QJsonArray& array)
 {
     QList<Participant> result;
+    QSet<QString> seen;
     for (const QJsonValue& value : array) {
+        Participant p;
         if (value.isString()) {
-            result.push_back({value.toString(), QString()});
+            p.id = value.toString().trimmed();
+        } else {
+            const QJsonObject o = value.toObject();
+            p.id = o.value(QStringLiteral("id")).toString().trimmed();
+            p.name = o.value(QStringLiteral("name")).toString();
+        }
+        if (p.id.isEmpty())
+            continue;
+
+        // Дубликаты в составе группы недопустимы: они ломают адресную
+        // рассылку и отображение участников.
+        if (seen.contains(p.id)) {
+            if (!p.name.trimmed().isEmpty()) {
+                for (Participant& existing : result) {
+                    if (existing.id == p.id && existing.name.trimmed().isEmpty())
+                        existing.name = p.name;
+                }
+            }
             continue;
         }
-        const QJsonObject o = value.toObject();
-        Participant p;
-        p.id = o.value(QStringLiteral("id")).toString();
-        p.name = o.value(QStringLiteral("name")).toString();
-        if (!p.id.isEmpty())
-            result << p;
+        seen.insert(p.id);
+        result << p;
     }
     return result;
 }
@@ -281,6 +336,10 @@ void ReportManager::setBasePath(const QString& path)
 
 bool ReportManager::openDatabase()
 {
+    // Повторное открытие (смена папки данных) не должно оставлять
+    // зарегистрированное, но уже не используемое соединение.
+    closeDatabase();
+
     if (!QDir().mkpath(m_base) || !QDir().mkpath(attachmentsDir())) {
         m_lastError = QStringLiteral("Не удалось создать папку данных:\n%1").arg(m_base);
         return false;
@@ -295,6 +354,13 @@ bool ReportManager::openDatabase()
     if (!m_db.open()) {
         m_lastError = QStringLiteral("Не удалось открыть базу чатов:\n%1")
                           .arg(m_db.lastError().text());
+        // Убираем соединение из реестра, иначе оно останется «висеть»
+        // и повторное открытие с тем же именем будет невозможно.
+        m_db = QSqlDatabase();
+        if (!m_connectionName.isEmpty()) {
+            QSqlDatabase::removeDatabase(m_connectionName);
+            m_connectionName.clear();
+        }
         return false;
     }
 
@@ -305,8 +371,10 @@ bool ReportManager::openDatabase()
     pragma.exec(QStringLiteral("PRAGMA foreign_keys=ON"));
     pragma.exec(QStringLiteral("PRAGMA temp_store=MEMORY"));
 
-    if (!ensureSchema())
+    if (!ensureSchema()) {
+        closeDatabase();
         return false;
+    }
 
     migrateLegacyJson();
     m_lastError.clear();
@@ -401,38 +469,58 @@ bool ReportManager::ensureSchema()
     }
 
     // Миграция старой схемы.
-    ensureColumn(QStringLiteral("reports"), QStringLiteral("author_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("reports"), QStringLiteral("last_activity_ts"), QStringLiteral("INTEGER NOT NULL DEFAULT 0"));
-    ensureColumn(QStringLiteral("reports"), QStringLiteral("archived"), QStringLiteral("INTEGER NOT NULL DEFAULT 0"));
-    ensureColumn(QStringLiteral("reports"), QStringLiteral("deleted"), QStringLiteral("INTEGER NOT NULL DEFAULT 0"));
-    ensureColumn(QStringLiteral("reports"), QStringLiteral("kind"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("reports"), QStringLiteral("participants"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
+    bool columnsOk = true;
+    columnsOk = ensureColumn(QStringLiteral("reports"), QStringLiteral("author_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("reports"), QStringLiteral("last_activity_ts"), QStringLiteral("INTEGER NOT NULL DEFAULT 0")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("reports"), QStringLiteral("archived"), QStringLiteral("INTEGER NOT NULL DEFAULT 0")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("reports"), QStringLiteral("deleted"), QStringLiteral("INTEGER NOT NULL DEFAULT 0")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("reports"), QStringLiteral("kind"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("reports"), QStringLiteral("participants"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
 
-    ensureColumn(QStringLiteral("messages"), QStringLiteral("sender_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("messages"), QStringLiteral("sender_name"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("messages"), QStringLiteral("timestamp"), QStringLiteral("INTEGER NOT NULL DEFAULT 0"));
-    ensureColumn(QStringLiteral("messages"), QStringLiteral("role"), QStringLiteral("TEXT NOT NULL DEFAULT 'user'"));
+    columnsOk = ensureColumn(QStringLiteral("messages"), QStringLiteral("sender_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("messages"), QStringLiteral("sender_name"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("messages"), QStringLiteral("timestamp"), QStringLiteral("INTEGER NOT NULL DEFAULT 0")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("messages"), QStringLiteral("role"), QStringLiteral("TEXT NOT NULL DEFAULT 'user'")) && columnsOk;
 
-    ensureColumn(QStringLiteral("attachments"), QStringLiteral("message_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("attachments"), QStringLiteral("display_name"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("attachments"), QStringLiteral("size"), QStringLiteral("INTEGER NOT NULL DEFAULT 0"));
-    ensureColumn(QStringLiteral("attachments"), QStringLiteral("owner_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("attachments"), QStringLiteral("owner_name"), QStringLiteral("TEXT NOT NULL DEFAULT ''"));
-    ensureColumn(QStringLiteral("attachments"), QStringLiteral("downloaded"), QStringLiteral("INTEGER NOT NULL DEFAULT 1"));
+    columnsOk = ensureColumn(QStringLiteral("attachments"), QStringLiteral("message_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("attachments"), QStringLiteral("display_name"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("attachments"), QStringLiteral("size"), QStringLiteral("INTEGER NOT NULL DEFAULT 0")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("attachments"), QStringLiteral("owner_id"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("attachments"), QStringLiteral("owner_name"), QStringLiteral("TEXT NOT NULL DEFAULT ''")) && columnsOk;
+    columnsOk = ensureColumn(QStringLiteral("attachments"), QStringLiteral("downloaded"), QStringLiteral("INTEGER NOT NULL DEFAULT 1")) && columnsOk;
+    if (!columnsOk) {
+        m_lastError = QStringLiteral("Не удалось обновить схему базы чатов:\n%1")
+                          .arg(m_db.lastError().text());
+        return false;
+    }
 
-    q.exec(QStringLiteral("CREATE INDEX IF NOT EXISTS idx_messages_report ON messages(report_id, timestamp)"));
-    q.exec(QStringLiteral("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(report_id, is_read, sender_id)"));
-    q.exec(QStringLiteral("CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, archived, deleted, last_activity_ts DESC)"));
-    q.exec(QStringLiteral("CREATE INDEX IF NOT EXISTS idx_attachments_report ON attachments(report_id, message_id)"));
+    const QStringList indexes = {
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_messages_report ON messages(report_id, timestamp)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(report_id, is_read, sender_id)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, archived, deleted, last_activity_ts DESC)"),
+        QStringLiteral("CREATE INDEX IF NOT EXISTS idx_attachments_report ON attachments(report_id, message_id)")
+    };
+    for (const QString& sql : indexes) {
+        if (!q.exec(sql)) {
+            setError(q, QStringLiteral("Ошибка создания индекса базы чатов"));
+            return false;
+        }
+    }
 
-    q.exec(QStringLiteral("UPDATE reports SET last_activity_ts = created_ts WHERE last_activity_ts = 0"));
+    if (!q.exec(QStringLiteral("UPDATE reports SET last_activity_ts = created_ts WHERE last_activity_ts = 0"))) {
+        setError(q, QStringLiteral("Ошибка инициализации времени активности"));
+        return false;
+    }
 
     // Старые баг-репорты были общими и не имели участников. Чтобы не
     // смешивать их с новым мессенджером, переносим их в архив. Операция
     // идемпотентна: чаты мессенджера всегда имеют список участников.
-    q.exec(QStringLiteral(
-        "UPDATE reports SET archived = 1, status = 'resolved'"
-        " WHERE (participants = '' OR participants IS NULL) AND archived = 0"));
+    if (!q.exec(QStringLiteral(
+            "UPDATE reports SET archived = 1, status = 'resolved'"
+            " WHERE (participants = '' OR participants IS NULL) AND archived = 0"))) {
+        setError(q, QStringLiteral("Ошибка миграции старых отчётов"));
+        return false;
+    }
     setMeta(QStringLiteral("messenger_migrated"), QStringLiteral("1"));
 
     return true;
@@ -763,16 +851,17 @@ bool ReportManager::importConversation(const QJsonObject& conversation, bool& is
     if (id.isEmpty())
         return false;
 
-    const QString title = conversation.value(QStringLiteral("title")).toString();
-    const QString description = conversation.value(QStringLiteral("description")).toString();
-    const QString author = conversation.value(QStringLiteral("author")).toString();
-    const QString authorId = conversation.value(QStringLiteral("authorId")).toString();
-    const QString created = conversation.value(QStringLiteral("created")).toString();
+    const QString title = jsonString(conversation, QStringLiteral("title"));
+    const QString description = jsonString(conversation, QStringLiteral("description"));
+    const QString author = jsonString(conversation, QStringLiteral("author"));
+    const QString authorId = jsonString(conversation, QStringLiteral("authorId"));
+    const QString created = jsonString(conversation, QStringLiteral("created"));
     const qint64 createdTs = conversation.value(QStringLiteral("createdTs")).toVariant().toLongLong();
     const qint64 lastActivityTs = conversation.value(QStringLiteral("lastActivityTs")).toVariant().toLongLong();
-    const QString status = conversation.value(QStringLiteral("status")).toString(QStringLiteral("open"));
+    const QString status = jsonString(conversation, QStringLiteral("status"),
+                                      QStringLiteral("open"));
     const bool archived = conversation.value(QStringLiteral("archived")).toBool(status == QLatin1String("resolved"));
-    const QString kind = conversation.value(QStringLiteral("kind")).toString();
+    const QString kind = jsonString(conversation, QStringLiteral("kind"));
     QList<Participant> participants =
         participantsFromJson(conversation.value(QStringLiteral("participants")).toArray());
 
@@ -923,7 +1012,7 @@ bool ReportManager::importConversation(const QJsonObject& conversation, bool& is
         if (msgId.isEmpty())
             continue;
 
-        const QString senderId = mo.value(QStringLiteral("senderId")).toString();
+        const QString senderId = jsonString(mo, QStringLiteral("senderId"));
         const qint64 timestamp = mo.value(QStringLiteral("timestamp")).toVariant().toLongLong();
         const bool incoming = !senderId.isEmpty() && senderId != selfId();
         // Новое входящее сообщение всегда непрочитано, независимо от того,
@@ -934,10 +1023,10 @@ bool ReportManager::importConversation(const QJsonObject& conversation, bool& is
         insMsg.addBindValue(msgId);
         insMsg.addBindValue(id);
         insMsg.addBindValue(senderId);
-        insMsg.addBindValue(mo.value(QStringLiteral("senderName")).toString());
-        insMsg.addBindValue(mo.value(QStringLiteral("text")).toString());
+        insMsg.addBindValue(jsonString(mo, QStringLiteral("senderName")));
+        insMsg.addBindValue(jsonString(mo, QStringLiteral("text")));
         insMsg.addBindValue(timestamp > 0 ? timeString(timestamp)
-                                          : mo.value(QStringLiteral("ts")).toString());
+                                          : jsonString(mo, QStringLiteral("ts")));
         insMsg.addBindValue(timestamp);
         insMsg.addBindValue(isRead ? 1 : 0);
         if (insMsg.exec() && insMsg.numRowsAffected() > 0) {
@@ -958,8 +1047,8 @@ bool ReportManager::importConversation(const QJsonObject& conversation, bool& is
             insMsgAttach.addBindValue(fileName);
             insMsgAttach.addBindValue(displayName.isEmpty() ? fileName : displayName);
             insMsgAttach.addBindValue(ao.value(QStringLiteral("size")).toVariant().toLongLong());
-            insMsgAttach.addBindValue(ao.value(QStringLiteral("ownerId")).toString(senderId));
-            insMsgAttach.addBindValue(ao.value(QStringLiteral("ownerName")).toString());
+            insMsgAttach.addBindValue(jsonString(ao, QStringLiteral("ownerId"), senderId));
+            insMsgAttach.addBindValue(jsonString(ao, QStringLiteral("ownerName")));
             insMsgAttach.addBindValue(downloaded ? 1 : 0);
             insMsgAttach.exec();
         }
@@ -1019,7 +1108,7 @@ bool ReportManager::importNetworkMessage(const QJsonObject& payload, bool& isNew
         return true;
     }
 
-    const QString senderId = message.value(QStringLiteral("senderId")).toString();
+    const QString senderId = jsonString(message, QStringLiteral("senderId"));
     const bool incoming = !senderId.isEmpty() && senderId != selfId();
     const qint64 timestamp = message.value(QStringLiteral("timestamp")).toVariant().toLongLong();
 
@@ -1036,10 +1125,10 @@ bool ReportManager::importNetworkMessage(const QJsonObject& payload, bool& isNew
     insMsg.addBindValue(msgId);
     insMsg.addBindValue(reportId);
     insMsg.addBindValue(senderId);
-    insMsg.addBindValue(message.value(QStringLiteral("senderName")).toString());
-    insMsg.addBindValue(message.value(QStringLiteral("text")).toString());
+    insMsg.addBindValue(jsonString(message, QStringLiteral("senderName")));
+    insMsg.addBindValue(jsonString(message, QStringLiteral("text")));
     insMsg.addBindValue(timestamp > 0 ? timeString(timestamp)
-                                      : message.value(QStringLiteral("ts")).toString());
+                                      : jsonString(message, QStringLiteral("ts")));
     insMsg.addBindValue(timestamp);
     insMsg.addBindValue(incoming ? 0 : 1);
     if (!insMsg.exec()) {
@@ -1066,8 +1155,8 @@ bool ReportManager::importNetworkMessage(const QJsonObject& payload, bool& isNew
         insAtt.addBindValue(fileName);
         insAtt.addBindValue(displayName.isEmpty() ? fileName : displayName);
         insAtt.addBindValue(ao.value(QStringLiteral("size")).toVariant().toLongLong());
-        insAtt.addBindValue(ao.value(QStringLiteral("ownerId")).toString(senderId));
-        insAtt.addBindValue(ao.value(QStringLiteral("ownerName")).toString());
+        insAtt.addBindValue(jsonString(ao, QStringLiteral("ownerId"), senderId));
+        insAtt.addBindValue(jsonString(ao, QStringLiteral("ownerName")));
         insAtt.addBindValue(downloaded ? 1 : 0);
         insAtt.exec();
     }

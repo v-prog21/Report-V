@@ -28,6 +28,7 @@ class FgisSearchDialog : public QDialog {
     Q_OBJECT
 public:
     explicit FgisSearchDialog(QWidget* parent = nullptr);
+    ~FgisSearchDialog() override;
 
     void setInitialQuery(const QString& text);
 

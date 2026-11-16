@@ -143,7 +143,7 @@ private:
     bool ensureSchema();
     bool ensureColumn(const QString& table, const QString& column,
                       const QString& definition);
-    void migrateLegacyJson();
+    void migrateLegacyJson(); // deprecated: только импорт старых JSON-отчётов
 
     QString reportsDir() const;
     QString attachmentsDir() const;
@@ -152,7 +152,9 @@ private:
     void setError(const QSqlQuery& query, const QString& context) const;
     void bumpRevision() { ++m_revision; }
 
-    QJsonObject toJson(const Report& r) const; // совместимость со старым форматом
+    // deprecated: совместимость со старой JSON-схемой баг-репортов,
+    // используется только migrateLegacyJson().
+    QJsonObject toJson(const Report& r) const;
     Report fromJson(const QJsonObject& o) const;
 
 public:
