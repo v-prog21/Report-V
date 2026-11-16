@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\supportil_selftest.dir/objects.a
-C:\Users\Win10_Game_OS\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\supportil_selftest.dir/objects.a @CMakeFiles\supportil_selftest.dir\objects1.rsp
-C:\Users\Win10_Game_OS\Tools\mingw1310_64\bin\g++.exe -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles\supportil_selftest.dir/objects.a -Wl,--no-whole-archive -o supportil_selftest.exe -Wl,--out-implib,libsupportil_selftest.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\supportil_selftest.dir\linkLibs.rsp
